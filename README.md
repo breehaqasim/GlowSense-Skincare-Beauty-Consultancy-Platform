@@ -166,8 +166,7 @@ Complete High Fidelity Prototype is available in `Documentations/GlowSense - Hig
 * [**Testing Strategy**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Test%20Strategy.pdf)
 
 ## 📬 Contact
-**Team Member 1**: Breeha Qasim  
-**Email**: bq08283@habib.edu.pk  
+**Team Member 1**: Breeha Qasim  **Email**: bq08283@habib.edu.pk  
 
 **Team Member 2**: Namel Shahid 
 **Email**: ns08327@habib.edu.pk  
