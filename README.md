@@ -138,7 +138,9 @@ Refer to Testing Strategy documentation for the complete test plan available in 
 #### **Sign Up Page**
 ![Sign Up Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/sign%20up%20page.png)
 
-#### **Home Page**
+High Fidelity Prototype is available in `Documentations/GlowSense - High Fidelity Prototype.pdf`.
+
+<!--#### **Home Page**
 ![Home Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/home%20page.png)
 
 #### **Skincare Page**
@@ -154,7 +156,7 @@ Refer to Testing Strategy documentation for the complete test plan available in 
 ![Makeup Products Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Makeup.jpeg)
 
 #### **Contact Us Page**
-![Contact Us Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Contact%20Us.jpeg)
+![Contact Us Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Contact%20Us.jpeg)-->
 
 
 ## 📄 Documentation
