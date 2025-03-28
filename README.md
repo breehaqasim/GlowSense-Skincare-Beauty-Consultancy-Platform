@@ -132,21 +132,29 @@ Full API documentation is available in `Documentations/API Definition Document.p
 Refer to Testing Strategy documentation for the complete test plan available in `Documentations/Testing Strategy.pdf`.
 
 ## 🎨 Interface Design 
+#### **Login Page**
 ![Login Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/login%20page.png)
+
+#### **Sign Up Page**
 ![Sign Up Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/sign%20up%20page.png)
+
+#### **Home Page**
 ![Home Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/home%20page.png)
+
+#### **Skincare Page**
 ![Skincare Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Skincare.jpeg)
+
+#### **Skincare Concern Form**
 ![Skincare Concern Form](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Skincare%20Concern%20Form.png)
+
+#### **Booking Consultation Form**
 ![Booking Consultation Form](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Booking%20Consultation.png)
+
+#### **Makeup Products Page**
 ![Makeup Products Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Makeup.jpeg)
+
+#### **Contact Us Page**
 ![Contact Us Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Contact%20Us.jpeg)
-
-
-
-
-
-
-
 
 
 ## 📄 Documentation
@@ -159,5 +167,3 @@ Refer to Testing Strategy documentation for the complete test plan available in 
 **Team Lead**: Breeha Qasim  
 **Email**: breeha.qasim@habib.edu.pk  
 **Institution**: Habib University, Karachi
-
-
