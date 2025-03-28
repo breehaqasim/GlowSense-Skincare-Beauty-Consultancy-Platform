@@ -112,7 +112,7 @@ python -m http.server 8000  # Basic HTTP server for HTML/CSS/JS
 | /schedule-consultation           | POST   | Book video consultation                    |
 | /trending-makeup-products        | GET    | Browse trending products                  |
 
-Full API documentation is available in `docs/API.md`.
+Full API documentation is available in `Documentations/API Definition Document.pdf`.
 
 
 ## 🧪 Testing Strategy
@@ -129,7 +129,7 @@ Full API documentation is available in `docs/API.md`.
 * **SSL encryption verification**: Ensure that all communication between the frontend and backend is encrypted using SSL.
 * **Session hijacking tests**: Perform tests to ensure session management is secure and resistant to hijacking attempts.
 
-Refer to Chapter 5.6 of the project documentation for the complete test plan.
+Refer to Testing Strategy documentation for the complete test plan available in `Documentations/Testing Strategy.pdf`.
 
 ## 📄 Documentation
 * [**Software Architecture**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Software%20Architecture%20Document.pdf)
