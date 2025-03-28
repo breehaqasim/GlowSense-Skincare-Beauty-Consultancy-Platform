@@ -132,9 +132,10 @@ Full API documentation is available in `docs/API.md`.
 Refer to Chapter 5.6 of the project documentation for the complete test plan.
 
 ## 📄 Documentation
-* **Software Architecture**: Refer to Chapter 3 of the project documentation for an overview of the system architecture.
-* **System Requirements**: See Chapters 2 & 5 for functional and non-functional requirements.
-* **Deployment Guide**: Section 1.6.3 in the project documentation provides deployment instructions.
+* [**Software Architecture**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Software%20Architecture%20Document.pdf)
+* [**API Definition Document**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/API%20Definition%20Document.pdf)
+* [**Specification Document**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Specification_Document.pdf)
+* [**Testing Strategy**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Test%20Strategy.pdf)
 
 
 ## 📬 Contact
