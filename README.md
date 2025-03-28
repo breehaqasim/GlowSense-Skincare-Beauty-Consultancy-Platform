@@ -15,7 +15,7 @@ A **full-stack platform** enabling users to:
 
 ---
 
-## 🛠️ Tech Stack (Per Document)  
+## 🛠️ Technology Stack  
 
 ### **Frontend**  
 | Component       | Technology       |  
