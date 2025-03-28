@@ -164,6 +164,16 @@ Refer to Testing Strategy documentation for the complete test plan available in 
 * [**Testing Strategy**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Test%20Strategy.pdf)
 
 ## 📬 Contact
-**Team Lead**: Breeha Qasim  
-**Email**: breeha.qasim@habib.edu.pk  
+**Team Member 1**: Breeha Qasim  
+**Email**: bq08283@habib.edu.pk  
+
+**Team Member 2**: Namel Shahid 
+**Email**: ns08327@habib.edu.pk  
+
+**Team Member 3**: Ashbah Faisal 
+**Email**: af08271@habib.edu.pk  
+
+**Team Member 4**: Rameez Wasif 
+**Email**: rw08479@habib.edu.pk  
+
 **Institution**: Habib University, Karachi
