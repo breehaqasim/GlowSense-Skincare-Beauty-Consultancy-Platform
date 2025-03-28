@@ -136,8 +136,6 @@ Refer to Chapter 5.6 of the project documentation for the complete test plan.
 * **System Requirements**: See Chapters 2 & 5 for functional and non-functional requirements.
 * **Deployment Guide**: Section 1.6.3 in the project documentation provides deployment instructions.
 
-## 📜 License
-MIT License - See [LICENSE](LICENSE)
 
 ## 📬 Contact
 **Team Lead**: Breeha Qasim  
