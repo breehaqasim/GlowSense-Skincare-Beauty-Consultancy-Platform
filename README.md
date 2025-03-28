@@ -131,12 +131,29 @@ Full API documentation is available in `Documentations/API Definition Document.p
 
 Refer to Testing Strategy documentation for the complete test plan available in `Documentations/Testing Strategy.pdf`.
 
+## 🎨 Interface Design 
+![Login Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/login%20page.png)
+![Sign Up Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/sign%20up%20page.png)
+![Home Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/home%20page.png)
+![Skincare Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Skincare.jpeg)
+![Skincare Concern Form](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Skincare%20Concern%20Form.png)
+![Booking Consultation Form](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Booking%20Consultation.png)
+![Makeup Products Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Makeup.jpeg)
+![Contact Us Page](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/public/Contact%20Us.jpeg)
+
+
+
+
+
+
+
+
+
 ## 📄 Documentation
 * [**Software Architecture**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Software%20Architecture%20Document.pdf)
 * [**API Definition Document**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/API%20Definition%20Document.pdf)
 * [**Specification Document**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Specification_Document.pdf)
 * [**Testing Strategy**](https://github.com/breehaqasim/GlowSense-Skincare-Beauty-Consultancy-Platform/blob/main/Documentations/Test%20Strategy.pdf)
-
 
 ## 📬 Contact
 **Team Lead**: Breeha Qasim  
