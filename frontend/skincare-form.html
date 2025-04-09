@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skincare Concerns Form - GlowSense</title>
+    <link rel="stylesheet" href="skincare-form.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="form-overlay" id="formOverlay">
+        <div class="form-container">
+            <button class="close-btn" id="closeForm">&times;</button>
+            <div class="form-content">
+                <h1>Tell Us About Your Skin</h1>
+                <form id="skincareForm" class="skincare-form">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inquiryType">Inquiry Type*</label>
+                        <select id="inquiryType" name="inquiryType" required>
+                            <option value="dark circles">Dark Circles</option>
+                            <option value="acne">Acne Treatment</option>
+                            <option value="antiaging">Anti-aging</option>
+                            <option value="hyperpigmentation">Hyperpigmentation</option>
+                            <option value="sensitivity">Skin Sensitivity</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description*</label>
+                        <textarea id="description" name="description" rows="4" placeholder="Please describe your skin concerns in detail..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="skinImages">Upload skin images</label>
+                        <div class="upload-options">
+                            <div class="file-upload">
+                                <input type="file" id="skinImages" name="skinImages" accept="image/*" multiple>
+                                <label for="skinImages" class="upload-btn">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    Upload Image
+                                </label>
+                            </div>
+                            <div class="camera-upload">
+                                <button type="button" id="openCamera" class="camera-btn">
+                                    <i class="fas fa-camera"></i>
+                                    Take Photo
+                                </button>
+                            </div>
+                        </div>
+                        <span class="file-name" id="fileName">No file chosen</span>
+                        
+                        <!-- Camera Modal -->
+                        <div id="cameraModal" class="camera-modal">
+                            <div class="camera-container">
+                                <button class="close-camera" id="closeCamera">&times;</button>
+                                <video id="cameraFeed" autoplay playsinline></video>
+                                <canvas id="photoCanvas" style="display: none;"></canvas>
+                                <div class="camera-controls">
+                                    <button type="button" id="capturePhoto" class="capture-btn">
+                                        <i class="fas fa-circle"></i>
+                                    </button>
+                                    <button type="button" id="retakePhoto" class="retake-btn" style="display: none;">
+                                        <i class="fas fa-redo"></i>
+                                        Retake
+                                    </button>
+                                    <button type="button" id="savePhoto" class="save-btn" style="display: none;">
+                                        <i class="fas fa-check"></i>
+                                        Use Photo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // File upload preview
+        document.getElementById('skinImages').addEventListener('change', function(e) {
+            const fileName = e.target.files.length > 0 ? 
+                (e.target.files.length === 1 ? e.target.files[0].name : e.target.files.length + ' files selected') : 
+                'No file chosen';
+            document.getElementById('fileName').textContent = fileName;
+        });
+
+        // Camera functionality
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const photoCanvas = document.getElementById('photoCanvas');
+        const captureBtn = document.getElementById('capturePhoto');
+        const retakeBtn = document.getElementById('retakePhoto');
+        const saveBtn = document.getElementById('savePhoto');
+        const closeCamera = document.getElementById('closeCamera');
+        let stream = null;
+
+        document.getElementById('openCamera').addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }, 
+                    audio: false 
+                });
+                cameraFeed.srcObject = stream;
+                cameraModal.style.display = 'flex';
+                captureBtn.style.display = 'block';
+                retakeBtn.style.display = 'none';
+                saveBtn.style.display = 'none';
+            } catch (err) {
+                alert('Unable to access camera: ' + err.message);
+            }
+        });
+
+        closeCamera.addEventListener('click', () => {
+            stopCamera();
+            cameraModal.style.display = 'none';
+        });
+
+        captureBtn.addEventListener('click', () => {
+            const context = photoCanvas.getContext('2d');
+            photoCanvas.width = cameraFeed.videoWidth;
+            photoCanvas.height = cameraFeed.videoHeight;
+            context.drawImage(cameraFeed, 0, 0, photoCanvas.width, photoCanvas.height);
+            cameraFeed.style.display = 'none';
+            photoCanvas.style.display = 'block';
+            captureBtn.style.display = 'none';
+            retakeBtn.style.display = 'block';
+            saveBtn.style.display = 'block';
+        });
+
+        retakeBtn.addEventListener('click', () => {
+            cameraFeed.style.display = 'block';
+            photoCanvas.style.display = 'none';
+            captureBtn.style.display = 'block';
+            retakeBtn.style.display = 'none';
+            saveBtn.style.display = 'none';
+        });
+
+        saveBtn.addEventListener('click', () => {
+            photoCanvas.toBlob((blob) => {
+                const file = new File([blob], "camera-photo.jpg", { type: "image/jpeg" });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('skinImages').files = dt.files;
+                document.getElementById('fileName').textContent = 'camera-photo.jpg';
+                stopCamera();
+                cameraModal.style.display = 'none';
+            }, 'image/jpeg');
+        });
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraFeed.srcObject = null;
+            photoCanvas.style.display = 'none';
+            cameraFeed.style.display = 'block';
+        }
+
+        // Close form
+        document.getElementById('closeForm').addEventListener('click', function() {
+            stopCamera();
+            window.parent.postMessage('closeForm', '*');
+        });
+
+        // Form submission
+        document.getElementById('skincareForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            stopCamera();
+            window.parent.postMessage('formSubmitted', '*');
+        });
+    </script>
+</body>
+</html> 
