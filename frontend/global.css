@@ -1,0 +1,24 @@
+/* Custom Cursor Styles */
+.glow-cursor {
+    width: 8px;
+    height: 8px;
+    background: #e75d8e;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s, height 0.2s;
+    box-shadow: 0 0 15px #e75d8e,
+                0 0 30px #e75d8e,
+                0 0 50px #e75d8e;
+    opacity: 0.7;
+}
+
+.glow-cursor.hover {
+    width: 12px;
+    height: 12px;
+    opacity: 1;
+    box-shadow: 0 0 20px #e75d8e,
+                0 0 40px #e75d8e,
+                0 0 60px #e75d8e;
+} 
