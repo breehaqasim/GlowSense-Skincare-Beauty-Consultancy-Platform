@@ -312,7 +312,7 @@ footer {
 
 .verification-badge {
     display: inline-block;
-    color: #4CAF50;
+    color: #8E97DD;
     font-size: 0.8rem;
     font-weight: 500;
     margin-bottom: 0.5rem;
@@ -373,7 +373,7 @@ footer {
 }
 
 .availability {
-    color: #4CAF50;
+    color: #8E97DD;
     font-size: 0.9rem;
     margin-bottom: 0.3rem;
 }

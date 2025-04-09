@@ -214,9 +214,8 @@
         // Handle form submission
         document.getElementById('bookingForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            // Here you would typically send the form data to your backend
-            alert('Consultation booked successfully!');
-            window.parent.postMessage('closeForm', '*');
+            // Open payment form
+            window.parent.postMessage('openPaymentForm', '*');
         });
     </script>
 </body>

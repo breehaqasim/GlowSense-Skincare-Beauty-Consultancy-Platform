@@ -249,6 +249,8 @@
         window.addEventListener('message', function(event) {
             if (event.data === 'closeForm' || event.data === 'formSubmitted') {
                 closePopup();
+            } else if (event.data === 'openPaymentForm') {
+                document.getElementById('formIframe').src = 'payment-form.html';
             }
         });
 

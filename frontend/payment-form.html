@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Payment Method</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fe;
+            padding: 2rem;
+        }
+
+        .payment-form {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .payment-methods {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .payment-method {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-method:hover {
+            border-color: #8E97DD;
+            background-color: #f8f9fe;
+        }
+
+        .payment-method img {
+            height: 24px;
+            margin-right: 1rem;
+        }
+
+        .payment-method span {
+            font-size: 1rem;
+            color: #555;
+        }
+
+        .payment-method i {
+            color: #8E97DD;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-form">
+        <h1>Select Payment Method</h1>
+        <ul class="payment-methods">
+            <li class="payment-method">
+                <div>
+                    <img src="../images/visa-mastercard.png" alt="Credit/Debit Card">
+                    <span>Credit/Debit Card</span>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </li>
+            <li class="payment-method">
+                <div>
+                    <img src="../images/bank-transfer.png" alt="Bank Transfer">
+                    <span>Bank Transfer</span>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </li>
+            <li class="payment-method">
+                <div>
+                    <img src="../images/easypaisa.png" alt="Easypaisa">
+                    <span>Easypaisa</span>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </li>
+            <li class="payment-method">
+                <div>
+                    <img src="../images/jazzcash.png" alt="JazzCash">
+                    <span>JazzCash</span>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </li>
+        </ul>
+    </div>
+</body>
+</html> 
