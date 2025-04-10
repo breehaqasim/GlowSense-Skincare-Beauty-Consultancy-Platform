@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="homepage.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="auth.js"></script>
 </head>
 <body>
     <header>
@@ -20,7 +21,10 @@
                 <li><a href="skincare.html">Skincare</a></li>
                 <!-- <li><a href="#services">Makeup</a></li> -->
                 <li><a href="contact.html">Contact Us</a></li>
-                <li><a href="login.html">Profile</a></li>
+                <li class="auth-dependent logged-out-only"><a href="login.html">Login</a></li>
+                <li class="auth-dependent logged-in-only"><a href="dashboard.html">My Dashboard</a></li>
+                <li class="auth-dependent logged-in-only"><a href="#" id="logout-btn">Logout</a></li>
+                <li class="auth-dependent logged-in-only"><span id="username-display"></span></li>
             </ul>
         </nav>
     </header>
@@ -30,7 +34,8 @@
             <div class="hero-content">
                 <h1>Transform Your Skin & Beauty Routine</h1>
                 <p>Let us help you achieve glowing skin naturally. Our expert consultants are here to guide you through personalized skincare solutions.</p>
-                <a href="login.html" class="cta-button">Get Started</a>
+                <a href="skincare-form.html" class="cta-button auth-dependent logged-in-only">Get Consultation</a>
+                <a href="login.html" class="cta-button auth-dependent logged-out-only">Get Started</a>
             </div>
             <div class="hero-image">
                 <img src="../images/front girl.png" alt="Beauty Routine Transformation">
@@ -54,9 +59,9 @@
                 </div>
                 <div class="service-card">
                     <div class="service-icon">
-                        <img src="../images/11.png" alt="Trending Products">
+                        <img src="../images/11.png" alt="Recommended Skincare Products">
                     </div>
-                    <h3>Trending Makeup<br>Products</h3>
+                    <h3>Ingredient<br>Breakdown</h3>
                 </div>
             </div>
         </section>
@@ -79,7 +84,7 @@
         </section>
 
         <section class="trending">
-            <h2>Trending Makeup Products</h2>
+            <h2>Ingredient Breakdown</h2>
             <div class="product-grid">
                 <div class="product-card">
                     <div class="product-content">
@@ -144,5 +149,38 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        // Initialize auth UI
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthUI();
+            
+            // Add logout functionality
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+        });
+
+        // Listen for message from skincare-form to close it
+        window.addEventListener('message', function(event) {
+            if (event.data === 'closeForm') {
+                // Assuming the form is shown in an iframe or modal, find and hide it
+                // Example: Hide an iframe with id 'skincareFormIframe'
+                const formElement = document.getElementById('skincareFormIframe'); // Adjust ID if needed
+                if (formElement) {
+                    formElement.style.display = 'none';
+                }
+                // Or hide a modal overlay
+                const formOverlay = document.getElementById('formOverlay'); // Adjust ID if needed
+                if (formOverlay) {
+                    formOverlay.style.display = 'none';
+                }
+            }
+        });
+    </script>
 </body>
 </html>

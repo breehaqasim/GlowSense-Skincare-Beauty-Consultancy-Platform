@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowSense</title>
+    <title>Skincare - GlowSense</title>
     <link rel="icon" type="image/png" sizes="192x192" href="../images/android-chrome-192x192.png" />
     <link rel="stylesheet" href="global.css">
     <link rel="stylesheet" href="skincare.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="auth.js"></script>
     <style>
         .popup-overlay {
             display: none;
@@ -70,18 +71,23 @@
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar">
-        <div class="logo">
-            <img src="../images/glow sense.png" alt="GlowSense Logo">
-        </div>
-        <ul class="nav-links">
-            <li><a href="homepage.html">Home</a></li>
-            <li><a href="#" class="active">Skincare</a></li>
-            <!-- <li><a href="#">Makeup</a></li> -->
-            <li><a href="contact.html">Contact Us</a></li>
-            <li><a href="#">Profile</a></li>
-        </ul>
-    </nav>
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <img src="../images/glow sense.png" alt="GlowSense Logo">
+            </div>
+            <ul class="nav-links">
+                <li><a href="homepage.html">Home</a></li>
+                <li><a href="skincare.html" class="active">Skincare</a></li>
+                <!-- <li><a href="#services">Makeup</a></li> -->
+                <li><a href="contact.html">Contact Us</a></li>
+                <li class="auth-dependent logged-out-only"><a href="login.html">Login</a></li>
+                <li class="auth-dependent logged-in-only"><a href="dashboard.html">My Dashboard</a></li>
+                <li class="auth-dependent logged-in-only"><a href="#" id="logout-btn">Logout</a></li>
+                <li class="auth-dependent logged-in-only"><span id="username-display"></span></li>
+            </ul>
+        </nav>
+    </header>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -217,6 +223,26 @@
 
     <script src="cursor.js"></script>
     <script>
+        // Initialize auth UI
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthUI();
+            
+            // Manually update username display
+            const usernameDisplay = document.getElementById('username-display');
+            if (usernameDisplay && getUsername()) {
+                usernameDisplay.textContent = getUsername();
+            }
+
+            // Add logout functionality
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+        });
+
         // Get DOM elements
         const openFormBtn = document.getElementById('openFormBtn');
         const popupOverlay = document.getElementById('popupOverlay');
@@ -227,36 +253,36 @@
             popupOverlay.classList.remove('active');
         }
 
-        // Open skincare form
+        // Open skincare form - Check login status first
         openFormBtn.addEventListener('click', function() {
-            popupOverlay.classList.add('active');
-            document.getElementById('formIframe').src = 'skincare-form.html';
+            if (!isLoggedIn()) {
+                alert('Please log in to submit your skincare concerns.');
+            } else {
+                popupOverlay.classList.add('active');
+                document.getElementById('formIframe').src = 'skincare-form.html';
+            }
         });
 
         // Open booking form when clicking Book Consultation
         bookButtons.forEach(button => {
             button.addEventListener('click', function() {
+                 if (!isLoggedIn()) { // Check login for booking too
+                    alert('Please log in to book a consultation.');
+                    window.location.href = 'login.html';
+                    return;
+                }
                 const expertCard = button.closest('.expert-card');
                 const doctorName = expertCard.querySelector('.expert-info h3').textContent;
                 const consultationPrice = expertCard.querySelector('.option.video .price').textContent;
-                
+
                 popupOverlay.classList.add('active');
-                document.getElementById('formIframe').src = 'consultation-form.html';
+                document.getElementById('formIframe').src = 'consultation-form.html'; // Assuming this form exists
             });
         });
 
         // Listen for messages from the iframe
         window.addEventListener('message', function(event) {
             if (event.data === 'closeForm' || event.data === 'formSubmitted') {
-                closePopup();
-            } else if (event.data === 'openPaymentForm') {
-                document.getElementById('formIframe').src = 'payment-form.html';
-            }
-        });
-
-        // Close popup when clicking outside
-        popupOverlay.addEventListener('click', function(event) {
-            if (event.target === popupOverlay) {
                 closePopup();
             }
         });

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard - GlowSense</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="../images/android-chrome-192x192.png" />
+    <!-- Include homepage.css first for the shared styling (including navbar) -->
+    <link rel="stylesheet" href="homepage.css">
+    <!-- Include dashboard.css for dashboard-specific styles -->
+    <link rel="stylesheet" href="dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="auth.js"></script>
+</head>
+<body>
+    <header>
+        <!-- Standard Navigation Bar -->
+        <nav class="navbar">
+            <div class="logo">
+                <img src="../images/glow sense.png" alt="GlowSense Logo">
+            </div>
+            <ul class="nav-links">
+                <li><a href="homepage.html">Home</a></li>
+                <li><a href="skincare.html">Skincare</a></li>
+                <li><a href="contact.html">Contact Us</a></li>
+                <li class="auth-dependent logged-out-only"><a href="login.html">Login</a></li>
+                <li class="auth-dependent logged-in-only"><a href="dashboard.html" class="active">My Dashboard</a></li>
+                <li class="auth-dependent logged-in-only"><a href="#" id="logout-btn">Logout</a></li>
+                <li class="auth-dependent logged-in-only"><span id="username-display"></span></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="dashboard-container">
+        <h1>User Dashboard</h1>
+
+        <!-- User Profile Section -->
+        <section class="profile-section card">
+            <div class="avatar-placeholder"></div> <!-- Simple placeholder -->
+            <div class="profile-details">
+                <h2 id="profile-username">Loading...</h2>
+                <p>Email: <span id="profile-email">Loading...</span></p>
+                <p>Member since: <span id="profile-member-since">Loading...</span></p>
+            </div>
+        </section>
+
+        <!-- Skincare Submissions Section -->
+        <section class="submissions-section card">
+            <h2>Skincare Submissions</h2>
+            <div class="section-labels">
+                <span>Date</span>
+                <span>Concern</span>
+                <span>Status</span>
+            </div>
+            <div id="consultationHistory" class="history-list">
+                <p class="placeholder-message">Loading submissions...</p>
+            </div>
+        </section>
+
+        <!-- Bookings Section -->
+        <section class="bookings-section card">
+            <h2>Bookings</h2>
+            <div class="section-labels">
+                <span>Date</span>
+                <span>Doctor</span>
+                <span>Type</span>
+                <span>Status</span>
+            </div>
+            <div id="bookingHistory" class="history-list">
+                <p class="placeholder-message">Booking history feature coming soon.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <!-- Standard Footer -->
+         <div class="footer-content">
+             <div class="footer-logo">
+                <img src="../images/glow sense.png" alt="GlowSense Logo">
+            </div>
+            <p style="font-size: 10px;">© 2025 GlowSense | Skincare consultations and product recommendations to help you glow every day!</p>
+            <p style="font-size: 10px;">Design elements and illustrations sourced from <a href="https://www.canva.com" target="_blank" rel="noopener noreferrer">Canva</a>.</p>
+            <div class="social-icons">
+                <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize auth UI
+            updateAuthUI();
+            
+            // Manually update username display as well (in case updateAuthUI ran before data was stored)
+            const usernameDisplay = document.getElementById('username-display');
+            if (usernameDisplay && getUsername()) {
+                usernameDisplay.textContent = getUsername();
+            }
+
+            // Add logout functionality
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+
+            // Check if user is logged in, redirect if not
+            if (!isLoggedIn()) {
+                window.location.href = 'login.html';
+                return; // Stop execution if redirecting
+            }
+
+            // Fetch dashboard data (user info + history)
+            const historyContainer = document.getElementById('consultationHistory');
+            const bookingContainer = document.getElementById('bookingHistory');
+            const profileUsername = document.getElementById('profile-username');
+            const profileEmail = document.getElementById('profile-email');
+            const profileMemberSince = document.getElementById('profile-member-since');
+
+            try {
+                const response = await authenticatedFetch('http://localhost:5000/user/consultations');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const dashboardData = await response.json();
+                const userInfo = dashboardData.user_info;
+                const historyData = dashboardData.history;
+
+                // Populate Profile Section
+                profileUsername.textContent = userInfo.username;
+                profileEmail.textContent = userInfo.email;
+                profileMemberSince.textContent = userInfo.member_since;
+                 // Also update nav username again in case it wasn't ready before
+                if (usernameDisplay) usernameDisplay.textContent = userInfo.username;
+
+                // Populate Skincare Submissions
+                if (historyData.length === 0) {
+                    historyContainer.innerHTML = '<p class="placeholder-message">You have no past skincare submissions.</p>';
+                } else {
+                    let historyHtml = '';
+                    historyData.forEach(consult => {
+                        // Determine status details
+                        let statusText = consult.status;
+                        if (consult.status.toLowerCase() === 'reviewed' && consult.expert_name) {
+                            statusText = `Reviewed by ${consult.expert_name}`;
+                        } else if (consult.status.toLowerCase() === 'pending') {
+                             statusText = 'Pending review';
+                        }
+
+                        // Format date to match example (YYYY-MM-DD)
+                        const date = new Date(consult.created_at);
+                        const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+                        historyHtml += `
+                            <div class="history-item">
+                                <div class="history-item-field">${formattedDate}</div>
+                                <div class="history-item-field">${consult.concerns}</div>
+                                <div class="history-item-field">${statusText}</div>
+                            </div>
+                        `;
+                    });
+                    historyContainer.innerHTML = historyHtml;
+                }
+
+                // For bookings, only display if there are actual bookings in the data
+                if (dashboardData.bookings && dashboardData.bookings.length > 0) {
+                    let bookingsHtml = '';
+                    dashboardData.bookings.forEach(booking => {
+                        const bookingDate = new Date(booking.date);
+                        const formattedDate = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
+                        
+                        bookingsHtml += `
+                            <div class="history-item">
+                                <div class="history-item-field">${formattedDate}</div>
+                                <div class="history-item-field">${booking.doctor_name}</div>
+                                <div class="history-item-field">${booking.type}</div>
+                                <div class="history-item-field">${booking.status}</div>
+                            </div>
+                        `;
+                    });
+                    bookingContainer.innerHTML = bookingsHtml;
+                } else {
+                    bookingContainer.innerHTML = '<p class="placeholder-message">No bookings found.</p>';
+                }
+                
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                
+                // Clear loading messages and show error messages instead
+                historyContainer.innerHTML = '<p class="error-message">Could not load history. Please try again later.</p>';
+                bookingContainer.innerHTML = '<p class="error-message">Could not load bookings. Please try again later.</p>';
+                
+                // For the profile section, only use what we have in localStorage
+                // This data should be valid as it's stored during login
+                const username = getUsername();
+                if (username) {
+                    profileUsername.textContent = username;
+                    if (usernameDisplay) usernameDisplay.textContent = username;
+                } else {
+                    profileUsername.textContent = 'Not available';
+                }
+                
+                // Email should be in localStorage if stored during login
+                const email = localStorage.getItem('email');
+                profileEmail.textContent = email || 'Not available';
+                
+                // Member since date should be in localStorage if stored during login
+                const memberSince = localStorage.getItem('memberSince');
+                if (memberSince) {
+                    try {
+                        const joinDate = new Date(memberSince);
+                        profileMemberSince.textContent = `${joinDate.toLocaleString('default', { month: 'long' })} ${joinDate.getFullYear()}`;
+                    } catch (e) {
+                        profileMemberSince.textContent = 'Not available';
+                    }
+                } else {
+                    profileMemberSince.textContent = 'Not available';
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

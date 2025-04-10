@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="contact.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="auth.js"></script>
 </head>
 <body>
     <header>
@@ -20,7 +21,10 @@
                 <li><a href="skincare.html">Skincare</a></li>
                 <!-- <li><a href="#services">Makeup</a></li> -->
                 <li><a href="contact.html" class="active">Contact Us</a></li>
-                <li><a href="login.html">Profile</a></li>
+                <li class="auth-dependent logged-out-only"><a href="login.html">Login</a></li>
+                <li class="auth-dependent logged-in-only"><a href="dashboard.html">My Dashboard</a></li>
+                <li class="auth-dependent logged-in-only"><a href="#" id="logout-btn">Logout</a></li>
+                <li class="auth-dependent logged-in-only"><span id="username-display"></span></li>
             </ul>
         </nav>
     </header>
@@ -87,5 +91,25 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthUI();
+            
+            // Manually update username display
+            const usernameDisplay = document.getElementById('username-display');
+            if (usernameDisplay && getUsername()) {
+                usernameDisplay.textContent = getUsername();
+            }
+
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+        });
+    </script>
 </body>
 </html> 

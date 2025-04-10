@@ -1,0 +1,126 @@
+/* dashboard.css - Updated to complement homepage.css */
+
+body {
+    background-color: #f8f9fa; /* Light background for the page */
+}
+
+/* Dashboard-specific styles (won't conflict with navbar styling from homepage.css) */
+.dashboard-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.dashboard-container h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+    font-weight: 600;
+    font-size: 2.5rem;
+}
+
+.card {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Profile Section */
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    background-color: #e75d8e; /* Using theme pink */
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.profile-details h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.profile-details p {
+    margin: 0.25rem 0;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+/* Submissions & Bookings Sections */
+.submissions-section h2,
+.bookings-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e75d8e; /* Thicker border with theme pink */
+    color: #444; /* Dark gray heading */
+    font-weight: 500;
+}
+
+/* Section Labels */
+.section-labels {
+    display: flex;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+    color: #666;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.section-labels span {
+    flex: 1;
+}
+
+/* History Item Styling */
+.history-list {
+    width: 100%;
+}
+
+.history-item {
+    display: flex;
+    background-color: #fdf7f9; /* Very light pink background for items */
+    border: 1px solid #f5e6eb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-item-field {
+    flex: 1;
+    padding: 0 0.5rem;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+/* Error states */
+.error-message {
+    color: #dc3545;
+    font-style: italic;
+}
+
+/* Additional placeholder text */
+.placeholder-message {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Optional: Style footer for consistency */
+footer {
+    margin-top: 3rem;
+    /* Add styles from homepage footer if necessary */
+} 
