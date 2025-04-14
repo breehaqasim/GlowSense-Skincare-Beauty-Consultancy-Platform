@@ -70,25 +70,63 @@ A **full-stack platform** enabling users to:
 - MySQL/MongoDB  
 - Node.js (for frontend testing)  
 
-### Backend Setup  
+### Backend Setup Instructions
+
+#### Prerequisites
+- Python 3.8 or higher
+- pip (Python package manager)
+
+#### Installation Steps
+
+1. Clone the repository:
 ```bash
-# Clone repository
-git clone https://github.com/your-repo/skincare-platform.git
-cd skincare-platform/backend
+git clone <repository-url>
+cd GlowSense-Skincare-Beauty-Consultancy-Platform
+```
 
-# Install dependencies
+2. Navigate to the backend directory:
+```bash
+cd backend
+```
+
+3. Create a virtual environment (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+4. Install dependencies:
+```bash
 pip install -r requirements.txt
+```
 
-# Configure database (MySQL example)
-mysql -u root -p
-CREATE DATABASE glowskin_db;
+5. Set up environment variables:
+   - Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   - Edit `.env` and add your Supabase credentials:
+     - Get your Supabase URL and anon key from your Supabase project settings
+     - Replace the placeholder values in `.env`
 
-# Run migrations
-python manage.py migrate
-
-# Start server
+6. Run the application:
+```bash
 python app.py
 ```
+
+The backend will start on `http://localhost:5000`
+
+#### Environment Variables
+- `SECRET_KEY`: Flask secret key for session management
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_KEY`: Your Supabase anon/public key
+
+#### Database Setup
+The application uses Supabase as the backend database. No local database setup is required.
+
+#### API Documentation
+The API endpoints are documented in the API Definition Document in the Documentations folder.
+
 ### Frontend Setup  
 ```bash
 cd ../frontend

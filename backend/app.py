@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, User, Expert, Consultation
 from config import Config
+from supabase_client import supabase
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
@@ -13,9 +13,6 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Load configuration
 app.config.from_object(Config)
 
-# Initialize database
-db.init_app(app)
-
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -23,12 +20,11 @@ def token_required(f):
         if not token:
             return jsonify({'message': 'Token is missing'}), 401
         try:
-            token = token.split(' ')[1]
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = User.query.get(data['user_id'])
+            # Verify token with Supabase
+            user = supabase.auth.get_user(token)
+            return f(user, *args, **kwargs)
         except:
             return jsonify({'message': 'Token is invalid'}), 401
-        return f(current_user, *args, **kwargs)
     return decorated
 
 # Route for home page
@@ -41,120 +37,120 @@ def home():
 def register():
     try:
         data = request.get_json()
-        print("Received registration data:", data)  # Debug log
+        print("Received registration data:", data)
         
         if not data or not all(k in data for k in ['username', 'email', 'password']):
-            print("Missing required fields")  # Debug log
             return jsonify({'message': 'Missing required fields'}), 400
         
-        if User.query.filter_by(email=data['email']).first():
-            print("Email already exists")  # Debug log
-            return jsonify({'message': 'Email already registered'}), 400
+        # Create user in Supabase Auth
+        auth_response = supabase.auth.sign_up({
+            "email": data['email'],
+            "password": data['password'],
+            "options": {
+                "data": {
+                    "username": data['username']
+                }
+            }
+        })
         
-        if User.query.filter_by(username=data['username']).first():
-            print("Username already exists")  # Debug log
-            return jsonify({'message': 'Username already taken'}), 400
-        
-        new_user = User(
-            username=data['username'],
-            email=data['email']
-        )
-        new_user.set_password(data['password'])
-        
-        db.session.add(new_user)
-        db.session.commit()
-        print("User registered successfully")  # Debug log
-        
-        return jsonify({'message': 'User registered successfully'}), 201
+        if auth_response.user:
+            # Insert additional user data into our users table
+            user_data = {
+                "id": auth_response.user.id,
+                "username": data['username'],
+                "email": data['email'],
+                "created_at": datetime.utcnow().isoformat()
+            }
+            
+            supabase.table('users').insert(user_data).execute()
+            
+            return jsonify({
+                'message': 'User registered successfully',
+                'user': {
+                    'id': auth_response.user.id,
+                    'email': auth_response.user.email,
+                    'username': data['username']
+                }
+            }), 201
+        else:
+            return jsonify({'message': 'Registration failed'}), 400
+            
     except Exception as e:
-        print("Registration error:", str(e))  # Debug log
+        print("Registration error:", str(e))
         return jsonify({'message': f'Registration failed: {str(e)}'}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    user = User.query.filter_by(email=data['email']).first()
-    
-    if not user or not user.check_password(data['password']):
+    try:
+        data = request.get_json()
+        print(f"Login attempt for email: {data.get('email')}")  # Debug log
+        
+        # Sign in with Supabase
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": data['email'],
+            "password": data['password']
+        })
+        
+        if not auth_response.user:
+            print("No user returned from Supabase")  # Debug log
+            return jsonify({'message': 'Invalid email or password'}), 401
+            
+        # Get user data
+        user = auth_response.user
+        session = auth_response.session
+        
+        print(f"Login successful for user: {user.email}")  # Debug log
+        
+        return jsonify({
+            'token': session.access_token,
+            'user': {
+                'id': user.id,
+                'email': user.email
+            }
+        })
+    except Exception as e:
+        print(f"Login error details: {str(e)}")  # Detailed error log
         return jsonify({'message': 'Invalid email or password'}), 401
-    
-    token = jwt.encode({
-        'user_id': user.id,
-        'exp': datetime.utcnow() + timedelta(days=1)
-    }, app.config['SECRET_KEY'])
-    
-    return jsonify({
-        'token': token,
-        'user': {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email
-        }
-    })
 
 # Route to get user's consultation history
 @app.route('/user/consultations', methods=['GET'])
 @token_required
 def get_user_consultations(current_user):
     try:
-        # Fetch consultations and join with Expert table
-        consultations = db.session.query(
-            Consultation, Expert.name
-        ).outerjoin(
-            Expert, Consultation.expert_id == Expert.id
-        ).filter(
-            Consultation.user_id == current_user.id
-        ).order_by(
-            Consultation.created_at.desc()
-        ).all()
-
-        history = []
-        for consult, expert_name in consultations:
-            history.append({
-                'id': consult.id,
-                'concerns': consult.concerns,
-                'status': consult.status,
-                'created_at': consult.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'scheduled_time': consult.scheduled_time.strftime('%Y-%m-%d %H:%M:%S') if consult.scheduled_time else None,
-                'expert_name': expert_name # Add expert name
-            })
-
-        # Prepare user info
-        user_info = {
-            'username': current_user.username,
-            'email': current_user.email,
-            'member_since': current_user.created_at.strftime('%B %Y') # Format join date
-        }
-
-        # Return both history and user info
-        return jsonify({'history': history, 'user_info': user_info}), 200
+        # Fetch consultations with expert information
+        consultations = supabase.table('consultations').select(
+            '*, experts(name)'
+        ).eq('user_id', current_user.id).execute()
+        
+        # Fetch user info
+        user_info = supabase.table('users').select(
+            'username, email, created_at'
+        ).eq('id', current_user.id).single().execute()
+        
+        return jsonify({
+            'history': consultations.data,
+            'user_info': user_info.data
+        }), 200
     except Exception as e:
-        print(f"Error fetching consultations for user {current_user.id}: {str(e)}")
+        print(f"Error fetching consultations: {str(e)}")
         return jsonify({'message': 'Failed to fetch consultation history'}), 500
 
 # Route for skincare concerns submission
 @app.route('/submit-skincare-concerns', methods=['POST'])
 @token_required
 def submit_skincare_concerns(current_user):
-    data = request.get_json()
-    new_concern = Consultation(
-        user_id=current_user.id,
-        concerns=data['concerns']
-    )
-    db.session.add(new_concern)
-    db.session.commit()
-    return jsonify({"message": "Skincare concerns submitted successfully"}), 200
-
-# Create tables before running the app
-def init_db():
-    with app.app_context():
-        # Drop all tables (for development)
-        db.drop_all()
-        print("Existing database tables dropped.")
-        # Create all database tables
-        db.create_all()
-        print("Database tables created successfully!")
+    try:
+        data = request.get_json()
+        consultation = supabase.table('consultations').insert({
+            'user_id': current_user.id,
+            'concerns': data['concerns'],
+            'status': 'pending',
+            'created_at': datetime.utcnow().isoformat()
+        }).execute()
+        
+        return jsonify({"message": "Skincare concerns submitted successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": f"Failed to submit concerns: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    init_db()  # Initialize database tables
     app.run(debug=True)
