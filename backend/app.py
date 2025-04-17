@@ -21,9 +21,12 @@ def token_required(f):
             return jsonify({'message': 'Token is missing'}), 401
         try:
             # Verify token with Supabase
-            user = supabase.auth.get_user(token)
+            user_response = supabase.auth.get_user(token)
+            # Extract the user data from the response
+            user = user_response.user
             return f(user, *args, **kwargs)
-        except:
+        except Exception as e:
+            print(f"Token verification error: {str(e)}")
             return jsonify({'message': 'Token is invalid'}), 401
     return decorated
 
@@ -99,36 +102,71 @@ def login():
         user = auth_response.user
         session = auth_response.session
         
+        # Fetch username from users table
+        user_data = supabase.table('users').select('username').eq('id', user.id).single().execute()
+        username = user_data.data.get('username') if user_data.data else user.email
+        
         print(f"Login successful for user: {user.email}")  # Debug log
         
         return jsonify({
             'token': session.access_token,
             'user': {
                 'id': user.id,
-                'email': user.email
+                'email': user.email,
+                'username': username
             }
         })
     except Exception as e:
         print(f"Login error details: {str(e)}")  # Detailed error log
         return jsonify({'message': 'Invalid email or password'}), 401
 
-# Route to get user's consultation history
+# Route to get user's consultation history with expert details
 @app.route('/user/consultations', methods=['GET'])
 @token_required
 def get_user_consultations(current_user):
     try:
-        # Fetch consultations with expert information
-        consultations = supabase.table('consultations').select(
-            '*, experts(name)'
-        ).eq('user_id', current_user.id).execute()
+        print(f"Fetching consultations for user: {current_user.id}")  # Debug log
+        
+        # Fetch consultations with expert information using the new schema
+        consultations = supabase.table('consultations')\
+            .select('''
+                *,
+                experts (
+                    name,
+                    specialization,
+                    email
+                )
+            ''')\
+            .eq('user_id', current_user.id)\
+            .order('created_at', desc=True)\
+            .execute()
         
         # Fetch user info
-        user_info = supabase.table('users').select(
-            'username, email, created_at'
-        ).eq('id', current_user.id).single().execute()
+        user_info = supabase.table('users')\
+            .select('username, email, created_at')\
+            .eq('id', current_user.id)\
+            .single()\
+            .execute()
+        
+        # Format the response
+        formatted_consultations = []
+        for consultation in consultations.data:
+            expert_info = consultation.get('experts', {})
+            formatted_consultations.append({
+                'id': consultation.get('id'),
+                'concerns': consultation.get('concerns'),
+                'status': consultation.get('status'),
+                'created_at': consultation.get('created_at'),
+                'scheduled_time': consultation.get('scheduled_time'),
+                'expert': {
+                    'name': expert_info.get('name') if expert_info else None,
+                    'specialization': expert_info.get('specialization') if expert_info else None,
+                    'email': expert_info.get('email') if expert_info else None
+                } if expert_info else None
+            })
         
         return jsonify({
-            'history': consultations.data,
+            'consultations': formatted_consultations,
             'user_info': user_info.data
         }), 200
     except Exception as e:
@@ -141,15 +179,36 @@ def get_user_consultations(current_user):
 def submit_skincare_concerns(current_user):
     try:
         data = request.get_json()
-        consultation = supabase.table('consultations').insert({
-            'user_id': current_user.id,
-            'concerns': data['concerns'],
-            'status': 'pending',
-            'created_at': datetime.utcnow().isoformat()
-        }).execute()
         
-        return jsonify({"message": "Skincare concerns submitted successfully"}), 200
+        # Extract the inquiry type and concerns from the combined concerns string
+        concerns_text = data.get('concerns', '')
+        inquiry_type = concerns_text.split(':')[0].strip() if ':' in concerns_text else 'Other'
+        concerns = concerns_text.split(':', 1)[1].strip() if ':' in concerns_text else concerns_text
+        
+        # Create consultation record with UUID
+        consultation_data = {
+            'user_id': current_user.id,  # Access the id from the user object
+            'concerns': f"Type: {inquiry_type}\n\nDetails: {concerns}",
+            'status': 'pending',
+            'created_at': datetime.utcnow().isoformat(),
+            'scheduled_time': None  # Will be set when consultation is scheduled
+        }
+        
+        print(f"Creating consultation for user: {current_user.id}")  # Debug log
+        
+        # Insert into consultations table
+        result = supabase.table('consultations').insert(consultation_data).execute()
+        
+        if not result.data:
+            return jsonify({"message": "Failed to save consultation"}), 500
+            
+        return jsonify({
+            "message": "Skincare concerns submitted successfully",
+            "consultation_id": result.data[0]['id'] if result.data else None
+        }), 200
+        
     except Exception as e:
+        print(f"Error submitting concerns: {str(e)}")
         return jsonify({"message": f"Failed to submit concerns: {str(e)}"}), 500
 
 if __name__ == "__main__":

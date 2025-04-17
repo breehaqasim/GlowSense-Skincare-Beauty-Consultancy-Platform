@@ -140,27 +140,37 @@
                 if (usernameDisplay) usernameDisplay.textContent = userInfo.username;
 
                 // Populate Skincare Submissions
-                if (historyData.length === 0) {
+                if (dashboardData.consultations.length === 0) {
                     historyContainer.innerHTML = '<p class="placeholder-message">You have no past skincare submissions.</p>';
                 } else {
                     let historyHtml = '';
-                    historyData.forEach(consult => {
-                        // Determine status details
-                        let statusText = consult.status;
-                        if (consult.status.toLowerCase() === 'reviewed' && consult.expert_name) {
-                            statusText = `Reviewed by ${consult.expert_name}`;
-                        } else if (consult.status.toLowerCase() === 'pending') {
-                             statusText = 'Pending review';
-                        }
-
-                        // Format date to match example (YYYY-MM-DD)
+                    dashboardData.consultations.forEach(consult => {
+                        // Format date
                         const date = new Date(consult.created_at);
                         const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+                        // Format status with expert info if available
+                        let statusText = consult.status;
+                        if (consult.expert && consult.status.toLowerCase() === 'reviewed') {
+                            statusText = `Reviewed by ${consult.expert.name}`;
+                        } else if (consult.status.toLowerCase() === 'pending') {
+                            statusText = 'Pending review';
+                        }
+
+                        // Extract concern type and details
+                        const concernsText = consult.concerns;
+                        let concernDisplay = concernsText;
+                        if (concernsText.includes('Type:')) {
+                            const parts = concernsText.split('\n\nDetails:');
+                            const type = parts[0].replace('Type:', '').trim();
+                            const details = parts[1] ? parts[1].trim() : '';
+                            concernDisplay = `${type}: ${details.substring(0, 50)}${details.length > 50 ? '...' : ''}`;
+                        }
 
                         historyHtml += `
                             <div class="history-item">
                                 <div class="history-item-field">${formattedDate}</div>
-                                <div class="history-item-field">${consult.concerns}</div>
+                                <div class="history-item-field">${concernDisplay}</div>
                                 <div class="history-item-field">${statusText}</div>
                             </div>
                         `;

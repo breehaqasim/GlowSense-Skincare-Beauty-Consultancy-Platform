@@ -33,6 +33,7 @@
                         </select>
                     </div>
 
+                    <!-- Image upload and camera options commented out for now
                     <div class="form-group">
                         <label for="skinImages">Upload skin images</label>
                         <div class="upload-options">
@@ -52,7 +53,6 @@
                         </div>
                         <span class="file-name" id="fileName">No file chosen</span>
                         
-                        <!-- Camera Modal -->
                         <div id="cameraModal" class="camera-modal">
                             <div class="camera-container">
                                 <button class="close-camera" id="closeCamera">&times;</button>
@@ -74,6 +74,7 @@
                             </div>
                         </div>
                     </div>
+                    -->
 
                     <button type="submit" class="submit-btn">Submit</button>
                 </form>
@@ -83,7 +84,8 @@
     </div>
 
     <script>
-        // File upload preview
+        // File upload preview commented out
+        /*
         document.getElementById('skinImages').addEventListener('change', function(e) {
             const fileName = e.target.files.length > 0 ? 
                 (e.target.files.length === 1 ? e.target.files[0].name : e.target.files.length + ' files selected') : 
@@ -91,7 +93,7 @@
             document.getElementById('fileName').textContent = fileName;
         });
 
-        // Camera functionality
+        // Camera functionality commented out
         const cameraModal = document.getElementById('cameraModal');
         const cameraFeed = document.getElementById('cameraFeed');
         const photoCanvas = document.getElementById('photoCanvas');
@@ -163,6 +165,7 @@
             photoCanvas.style.display = 'none';
             cameraFeed.style.display = 'block';
         }
+        */
 
         // Close form
         document.getElementById('closeForm').addEventListener('click', function() {
@@ -177,12 +180,23 @@
             
             const concerns = document.getElementById('description').value;
             const inquiryType = document.getElementById('inquiryType').value;
+            const submitBtn = document.querySelector('.submit-btn');
             
             try {
-                const response = await authenticatedFetch('http://localhost:5000/submit-skincare-concerns', {
+                // Disable submit button and show loading state
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+                
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    throw new Error('Please log in to submit your skincare concerns');
+                }
+                
+                const response = await fetch('http://localhost:5000/submit-skincare-concerns', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': token
                     },
                     body: JSON.stringify({
                         concerns: `${inquiryType}: ${concerns}`
@@ -193,18 +207,40 @@
                 
                 const messageDiv = document.getElementById('response-message');
                 if (response.ok) {
-                    messageDiv.innerHTML = '<div class="success-message">Your skincare concerns have been submitted successfully! Our experts will review and provide recommendations soon.</div>';
+                    messageDiv.innerHTML = `
+                        <div class="success-message">
+                            <h3>Thank you for your submission!</h3>
+                            <p>Your skincare concerns have been received successfully.</p>
+                            <p>Our experts will review your case and provide personalized recommendations soon.</p>
+                            <p>You can view the status of your consultation in your dashboard.</p>
+                        </div>`;
                     document.getElementById('skincareForm').reset();
+                    document.getElementById('fileName').textContent = 'No file chosen';
+                    
+                    // Automatically close the form after 3 seconds
+                    setTimeout(() => {
+                        window.parent.postMessage('closeForm', '*');
+                    }, 3000);
                 } else {
-                    messageDiv.innerHTML = `<div class="error-message">${data.message || 'Failed to submit. Please try again.'}</div>`;
+                    messageDiv.innerHTML = `<div class="error-message">
+                        <h3>Submission Failed</h3>
+                        <p>${data.message || 'Failed to submit. Please try again.'}</p>
+                    </div>`;
                 }
                 messageDiv.style.display = 'block';
                 
             } catch (error) {
                 console.error('Error:', error);
                 const messageDiv = document.getElementById('response-message');
-                messageDiv.innerHTML = '<div class="error-message">An error occurred. Please try again later.</div>';
+                messageDiv.innerHTML = `<div class="error-message">
+                    <h3>Error</h3>
+                    <p>${error.message || 'An error occurred. Please try again later.'}</p>
+                </div>`;
                 messageDiv.style.display = 'block';
+            } finally {
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit';
             }
         });
     </script>

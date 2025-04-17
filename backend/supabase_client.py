@@ -7,7 +7,7 @@ if not Config.SUPABASE_URL or not Config.SUPABASE_KEY:
     raise ValueError("Supabase URL and Key must be set in .env file")
 
 try:
-    # Initialize Supabase client
+    # Initialize Supabase client with simplified options
     supabase: Client = create_client(
         supabase_url=Config.SUPABASE_URL,
         supabase_key=Config.SUPABASE_KEY
