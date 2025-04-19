@@ -185,14 +185,21 @@ def submit_skincare_concerns(current_user):
         inquiry_type = concerns_text.split(':')[0].strip() if ':' in concerns_text else 'Other'
         concerns = concerns_text.split(':', 1)[1].strip() if ':' in concerns_text else concerns_text
         
+        # Get expert_id from the request
+        expert_id = data.get('expert_id')
+        
         # Create consultation record with UUID
         consultation_data = {
-            'user_id': current_user.id,  # Access the id from the user object
+            'user_id': current_user.id,
             'concerns': f"Type: {inquiry_type}\n\nDetails: {concerns}",
             'status': 'pending',
             'created_at': datetime.utcnow().isoformat(),
-            'scheduled_time': None  # Will be set when consultation is scheduled
+            'scheduled_time': None
         }
+        
+        # Add expert_id if provided
+        if expert_id:
+            consultation_data['expert_id'] = expert_id
         
         print(f"Creating consultation for user: {current_user.id}")  # Debug log
         
@@ -210,6 +217,94 @@ def submit_skincare_concerns(current_user):
     except Exception as e:
         print(f"Error submitting concerns: {str(e)}")
         return jsonify({"message": f"Failed to submit concerns: {str(e)}"}), 500
+
+# Route for getting matched experts
+@app.route('/get-matched-experts', methods=['GET'])
+@token_required
+def get_matched_experts(current_user):
+    try:
+        print("Starting expert matching process...")  # Debug log
+        
+        # Get the user's latest consultation to check their inquiry type
+        latest_consultation = supabase.table('consultations')\
+            .select('concerns')\
+            .eq('user_id', current_user.id)\
+            .order('created_at', desc=True)\
+            .limit(1)\
+            .execute()
+            
+        inquiry_type = None
+        if latest_consultation.data:
+            concerns_text = latest_consultation.data[0].get('concerns', '')
+            if 'Type:' in concerns_text:
+                inquiry_type = concerns_text.split('Type:')[1].split('\n')[0].strip().lower()
+        
+        print(f"Searching for experts with specialization: {inquiry_type}")  # Debug log
+        
+        # Query experts based on specialization matching inquiry type
+        if inquiry_type:
+            experts = supabase.table('experts')\
+                .select('id, name, email, specialization, bio, experience, consultation_price')\
+                .ilike('specialization', f'%{inquiry_type}%')\
+                .execute()
+        else:
+            # If no inquiry type, get all experts
+            experts = supabase.table('experts')\
+                .select('id, name, email, specialization, bio, experience, consultation_price')\
+                .execute()
+            
+        print(f"Found {len(experts.data)} matching experts")  # Debug log
+        
+        if not experts.data:
+            return jsonify({
+                'message': 'No experts found for your specific concerns.',
+                'experts': []
+            }), 200
+            
+        return jsonify({
+            'experts': experts.data
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching experts: {str(e)}")
+        return jsonify({'message': 'Failed to fetch experts', 'error': str(e)}), 500
+
+# Route for booking consultation
+@app.route('/book-consultation', methods=['POST'])
+@token_required
+def book_consultation(current_user):
+    try:
+        data = request.get_json()
+        
+        # Create consultation record
+        consultation_data = {
+            'user_id': current_user.id,
+            'expert_id': data.get('expert_id'),
+            'status': 'scheduled',
+            'scheduled_time': f"{data.get('consultation_date')} {data.get('consultation_time')}",
+            'consultation_type': data.get('consultation_type'),
+            'patient_name': data.get('patient_name'),
+            'patient_email': data.get('patient_email'),
+            'patient_phone': data.get('patient_phone'),
+            'patient_age': data.get('patient_age'),
+            'patient_gender': data.get('patient_gender'),
+            'created_at': datetime.utcnow().isoformat()
+        }
+        
+        # Insert into consultations table
+        result = supabase.table('consultations').insert(consultation_data).execute()
+        
+        if not result.data:
+            return jsonify({"message": "Failed to book consultation"}), 500
+            
+        return jsonify({
+            "message": "Consultation booked successfully",
+            "consultation_id": result.data[0]['id'] if result.data else None
+        }), 200
+        
+    except Exception as e:
+        print(f"Error booking consultation: {str(e)}")
+        return jsonify({"message": f"Failed to book consultation: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
