@@ -106,94 +106,8 @@
         <h2>Matched Experts</h2>
         <p class="section-description">Based on your skincare concerns, here are the best-matched dermatologists for you</p>
         
-        <div class="experts-grid">
-            <!-- Expert Card 1 -->
-            <div class="expert-card">
-                <div class="expert-header">
-                    <div class="expert-info">
-                        <h3>Dr. Sarah Johnson</h3>
-                        <span class="verification-badge">PMDC Verified</span>
-                        <p class="specialization">Dermatologist</p>
-                        <p class="qualifications">MBBS, MCPS (Dermatology)</p>
-                    </div>
-                </div>
-
-                <div class="expert-stats">
-                    <div class="stat">
-                        <span class="stat-label">Reviews</span>
-                        <span class="stat-value">245</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Experience</span>
-                        <span class="stat-value">8 Yrs</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Satisfaction</span>
-                        <span class="stat-value">98%</span>
-                    </div>
-                </div>
-
-                <div class="consultation-options">
-                    <div class="option video">
-                        <h4>Video Consultation</h4>
-                        <p class="availability">Available Today</p>
-                        <p class="price">Rs. 1,500</p>
-                    </div>
-                    <div class="option clinic">
-                        <h4>GlowSense Clinic, DHA Lahore</h4>
-                        <p class="availability">Available Tomorrow</p>
-                        <p class="price">Rs. 2,000</p>
-                    </div>
-                </div>
-
-                <div class="expert-actions">
-                    <button class="video-call-btn">Book Consultation</button>
-                </div>
-            </div>
-
-            <!-- Expert Card 2 -->
-            <div class="expert-card">
-                <div class="expert-header">
-                    <div class="expert-info">
-                        <h3>Dr. Michael Chen</h3>
-                        <span class="verification-badge">PMDC Verified</span>
-                        <p class="specialization">Dermatologist</p>
-                        <p class="qualifications">MBBS, FCPS (Dermatology)</p>
-                    </div>
-                </div>
-
-                <div class="expert-stats">
-                    <div class="stat">
-                        <span class="stat-label">Reviews</span>
-                        <span class="stat-value">189</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Experience</span>
-                        <span class="stat-value">12 Yrs</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Satisfaction</span>
-                        <span class="stat-value">97%</span>
-                    </div>
-                </div>
-
-                <div class="consultation-options">
-                    <div class="option video">
-                        <h4>Video Consultation</h4>
-                        <p class="availability">Available Today</p>
-                        <p class="price">Rs. 2,000</p>
-                    </div>
-                    <div class="option clinic">
-                        <h4>Skin Solutions Clinic, Gulberg</h4>
-                        <p class="availability">Available Today</p>
-                        <p class="price">Rs. 2,500</p>
-                    </div>
-                </div>
-
-                <div class="expert-actions">
-                    <button class="video-call-btn">Book Consultation</button>
-                </div>
-            </div>
+        <div class="experts-grid" id="expertsGrid">
+            <!-- Expert cards will be dynamically inserted here -->
         </div>
     </section>
 
@@ -240,48 +154,130 @@
                     logout();
                 });
             }
+
+            // Fetch matched experts when the page loads
+            fetchMatchedExperts();
         });
+
+        // Function to fetch matched experts
+        async function fetchMatchedExperts() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    console.error('No auth token found');
+                    document.getElementById('expertsGrid').innerHTML = `
+                        <div class="error-message">
+                            <p>Please log in to view matched experts.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                console.log('Fetching experts...');
+                const response = await fetch('http://localhost:5000/get-matched-experts', {
+                    headers: {
+                        'Authorization': token
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Received experts data:', data);
+
+                if (response.ok) {
+                    displayExperts(data.experts);
+                } else {
+                    throw new Error(data.message || 'Failed to fetch experts');
+                }
+            } catch (error) {
+                console.error('Error fetching experts:', error);
+                document.getElementById('expertsGrid').innerHTML = `
+                    <div class="error-message">
+                        <p>Failed to load experts. Please try again later.</p>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Function to display experts
+        function displayExperts(experts) {
+            const expertsGrid = document.getElementById('expertsGrid');
+            console.log('Displaying experts:', experts);
+            
+            if (!experts || experts.length === 0) {
+                expertsGrid.innerHTML = `
+                    <div class="no-experts">
+                        <p>No experts found for your query. Please try a different search.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            expertsGrid.innerHTML = experts.map(expert => {
+                console.log('Processing expert:', expert);
+                return `
+                    <div class="expert-card">
+                        <div class="expert-header">
+                            <div class="expert-info">
+                                <h3>${expert.name || 'Expert Name Not Available'}</h3>
+                                <span class="verification-badge">PMDC Verified</span>
+                                <p class="specialization">${expert.specialization || 'Dermatologist'}</p>
+                                <p class="qualifications">${expert.bio || 'Expert in skincare and dermatology'}</p>
+                            </div>
+                        </div>
+
+                        <div class="expert-stats">
+                            <div class="stat">
+                                <span class="stat-label">Experience</span>
+                                <span class="stat-value">${expert.experience || 5} Yrs</span>
+                            </div>
+                        </div>
+
+                        <div class="consultation-options">
+                            <div class="option video">
+                                <h4>Video Consultation</h4>
+                                <p class="price">Rs. ${expert.consultation_price || 1500}</p>
+                            </div>
+                        </div>
+
+                        <div class="expert-actions">
+                            <button class="video-call-btn" onclick="bookConsultation('${expert.id}')">Book Consultation</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Function to handle booking consultation
+        function bookConsultation(expertId) {
+            // Open the consultation form with the expert ID
+            const formIframe = document.getElementById('formIframe');
+            formIframe.src = `consultation-form.html?expert_id=${expertId}`;
+            document.getElementById('popupOverlay').classList.add('active');
+        }
 
         // Get DOM elements
         const openFormBtn = document.getElementById('openFormBtn');
         const popupOverlay = document.getElementById('popupOverlay');
-        const bookButtons = document.querySelectorAll('.video-call-btn');
 
         // Function to close popup
         function closePopup() {
             popupOverlay.classList.remove('active');
         }
 
-        // Open skincare form - Check login status first
-        openFormBtn.addEventListener('click', function() {
-            if (!isLoggedIn()) {
-                alert('Please log in to submit your skincare concerns.');
-            } else {
+        // Add event listener for opening the form
+        if (openFormBtn) {
+            openFormBtn.addEventListener('click', function() {
+                const formIframe = document.getElementById('formIframe');
+                formIframe.src = 'skincare-form.html'; // Keep skincare form for initial concerns
                 popupOverlay.classList.add('active');
-                document.getElementById('formIframe').src = 'skincare-form.html';
-            }
-        });
-
-        // Open booking form when clicking Book Consultation
-        bookButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                 if (!isLoggedIn()) { // Check login for booking too
-                    alert('Please log in to book a consultation.');
-                    window.location.href = 'login.html';
-                    return;
-                }
-                const expertCard = button.closest('.expert-card');
-                const doctorName = expertCard.querySelector('.expert-info h3').textContent;
-                const consultationPrice = expertCard.querySelector('.option.video .price').textContent;
-
-                popupOverlay.classList.add('active');
-                document.getElementById('formIframe').src = 'consultation-form.html'; // Assuming this form exists
             });
-        });
+        }
 
-        // Listen for messages from the iframe
+        // Listen for message from skincare-form to close it
         window.addEventListener('message', function(event) {
-            if (event.data === 'closeForm' || event.data === 'formSubmitted') {
+            if (event.data === 'closeForm') {
                 closePopup();
             }
         });
