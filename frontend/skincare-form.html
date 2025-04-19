@@ -182,6 +182,10 @@
             const inquiryType = document.getElementById('inquiryType').value;
             const submitBtn = document.querySelector('.submit-btn');
             
+            // Get expert_id from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const expertId = urlParams.get('expert_id');
+            
             try {
                 // Disable submit button and show loading state
                 submitBtn.disabled = true;
@@ -199,7 +203,8 @@
                         'Authorization': token
                     },
                     body: JSON.stringify({
-                        concerns: `${inquiryType}: ${concerns}`
+                        concerns: `${inquiryType}: ${concerns}`,
+                        expert_id: expertId
                     })
                 });
                 
