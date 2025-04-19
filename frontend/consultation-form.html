@@ -146,28 +146,28 @@
             <p><strong>Fee:</strong> <span class="price">Rs. 700</span></p>
         </div>
 
-        <form id="bookingForm">
+        <form id="consultationForm">
             <div class="form-section">
                 <h2>Patient's Personal Details</h2>
                 <div class="form-group">
-                    <label for="name">Full Name</label>
-                    <input type="text" id="name" required>
+                    <label for="patient_name">Full Name</label>
+                    <input type="text" id="patient_name" required>
                 </div>
                 <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" required>
+                    <label for="patient_email">Email Address</label>
+                    <input type="email" id="patient_email" required>
                 </div>
                 <div class="form-group">
-                    <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone" required>
+                    <label for="patient_phone">Phone Number</label>
+                    <input type="tel" id="patient_phone" required>
                 </div>
                 <div class="form-group">
-                    <label for="age">Age</label>
-                    <input type="number" id="age" required>
+                    <label for="patient_age">Age</label>
+                    <input type="number" id="patient_age" required>
                 </div>
                 <div class="form-group">
-                    <label for="gender">Gender</label>
-                    <select id="gender" required>
+                    <label for="patient_gender">Gender</label>
+                    <select id="patient_gender" required>
                         <option value="">Select Gender</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
@@ -179,8 +179,8 @@
             <div class="form-section">
                 <h2>Select Date & Time</h2>
                 <div class="form-group">
-                    <label for="date">Preferred Date</label>
-                    <input type="date" id="date" required>
+                    <label for="consultation_date">Preferred Date</label>
+                    <input type="date" id="consultation_date" required>
                 </div>
                 <div class="form-group">
                     <label>Available Time Slots</label>
@@ -202,6 +202,47 @@
     </div>
 
     <script>
+        // Get expert ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const expertId = urlParams.get('expert_id');
+
+        // Function to fetch expert details
+        async function fetchExpertDetails() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('Please log in to book a consultation');
+                    window.parent.location.href = 'login.html';
+                    return;
+                }
+
+                const response = await fetch(`http://localhost:5000/get-matched-experts`, {
+                    headers: {
+                        'Authorization': token
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch expert details');
+                }
+
+                const data = await response.json();
+                const expert = data.experts.find(e => e.id === expertId);
+                
+                if (expert) {
+                    // Update the form with expert details
+                    document.getElementById('doctorName').textContent = expert.name;
+                    // You can also update other expert-specific information here
+                }
+            } catch (error) {
+                console.error('Error fetching expert details:', error);
+                alert('Failed to load expert details. Please try again later.');
+            }
+        }
+
+        // Fetch expert details when page loads
+        document.addEventListener('DOMContentLoaded', fetchExpertDetails);
+
         // Handle time slot selection
         const timeSlots = document.querySelectorAll('.time-slot');
         timeSlots.forEach(slot => {
@@ -212,11 +253,56 @@
         });
 
         // Handle form submission
-        document.getElementById('bookingForm').addEventListener('submit', (e) => {
+        document.getElementById('consultationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            // Open payment form
-            window.parent.postMessage('openPaymentForm', '*');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please log in to book a consultation');
+                return;
+            }
+
+            const formData = {
+                expert_id: expertId,
+                consultation_date: document.getElementById('consultation_date').value,
+                consultation_time: document.getElementById('consultation_time').value,
+                consultation_type: 'video', // Default to video consultation
+                patient_name: document.getElementById('patient_name').value,
+                patient_email: document.getElementById('patient_email').value,
+                patient_phone: document.getElementById('patient_phone').value,
+                patient_age: document.getElementById('patient_age').value,
+                patient_gender: document.getElementById('patient_gender').value
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/book-consultation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Consultation booked successfully! Please proceed to payment.');
+                    // Here you can redirect to payment page or show payment form
+                    window.location.href = 'payment.html?consultation_id=' + data.consultation_id;
+                } else {
+                    alert('Failed to book consultation: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error booking consultation:', error);
+                alert('Failed to book consultation. Please try again.');
+            }
         });
+
+        // Set minimum date to today
+        const dateInput = document.getElementById('consultation_date');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
     </script>
 </body>
 </html> 
