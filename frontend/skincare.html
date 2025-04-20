@@ -215,7 +215,6 @@
             }
 
             expertsGrid.innerHTML = experts.map(expert => {
-                console.log('Processing expert:', expert);
                 return `
                     <div class="expert-card">
                         <div class="expert-header">
@@ -242,7 +241,7 @@
                         </div>
 
                         <div class="expert-actions">
-                            <button class="video-call-btn" onclick="bookConsultation('${expert.id}')">Book Consultation</button>
+                            <button class="video-call-btn" onclick='bookConsultation(${JSON.stringify(expert)})'>Book Consultation</button>
                         </div>
                     </div>
                 `;
@@ -250,10 +249,16 @@
         }
 
         // Function to handle booking consultation
-        function bookConsultation(expertId) {
-            // Open the consultation form with the expert ID
+        function bookConsultation(expert) {
+            // Open the consultation form with the expert details
             const formIframe = document.getElementById('formIframe');
-            formIframe.src = `consultation-form.html?expert_id=${expertId}`;
+            const expertData = {
+                id: expert.id,
+                name: expert.name,
+                consultation_price: expert.consultation_price
+            };
+            const encodedData = encodeURIComponent(JSON.stringify(expertData));
+            formIframe.src = `consultation-form.html?expert_data=${encodedData}`;
             document.getElementById('popupOverlay').classList.add('active');
         }
 
