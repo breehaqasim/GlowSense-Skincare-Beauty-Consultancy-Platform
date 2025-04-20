@@ -202,61 +202,83 @@
     </div>
 
     <script>
-        // Get expert ID from URL parameters
+        // Get expert data from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const expertId = urlParams.get('expert_id');
+        const expertDataParam = urlParams.get('expert_data');
+        let expertData;
+        let expertId;
 
-        // Function to fetch expert details
-        async function fetchExpertDetails() {
+        try {
+            expertData = JSON.parse(decodeURIComponent(expertDataParam));
+            expertId = expertData.id;
+            
+            // Update the consultation info section
+            document.getElementById('doctorName').textContent = expertData.name;
+            document.querySelector('.price').textContent = `Rs. ${expertData.consultation_price}`;
+        } catch (error) {
+            console.error('Error parsing expert data:', error);
+            alert('Error loading expert details. Please try again.');
+            window.parent.postMessage('closeForm', '*');
+        }
+
+        // Handle date selection and fetch available slots
+        document.getElementById('consultation_date').addEventListener('change', async function(e) {
+            const date = e.target.value;
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                alert('Please log in to view available slots');
+                return;
+            }
+
             try {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    alert('Please log in to book a consultation');
-                    window.parent.location.href = 'login.html';
-                    return;
-                }
-
-                const response = await fetch(`http://localhost:5000/get-matched-experts`, {
+                console.log('Fetching slots for date:', date);
+                const response = await fetch(`http://localhost:5000/check-slot-availability?expert_id=${expertId}&date=${date}`, {
                     headers: {
                         'Authorization': token
                     }
                 });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch expert details');
-                }
-
-                const data = await response.json();
-                const expert = data.experts.find(e => e.id === expertId);
                 
-                if (expert) {
-                    // Update the form with expert details
-                    document.getElementById('doctorName').textContent = expert.name;
-                    // You can also update other expert-specific information here
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok) {
+                    // Update time slots display
+                    const timeSlotsContainer = document.querySelector('.time-slots');
+                    timeSlotsContainer.innerHTML = data.available_slots.map(slot => `
+                        <div class="time-slot" data-time="${slot}">${formatTime(slot)}</div>
+                    `).join('');
+                    
+                    // Reattach click handlers to new time slots
+                    const timeSlots = document.querySelectorAll('.time-slot');
+                    timeSlots.forEach(slot => {
+                        slot.addEventListener('click', () => {
+                            timeSlots.forEach(s => s.classList.remove('selected'));
+                            slot.classList.add('selected');
+                            selectedTimeSlot = slot.dataset.time;
+                        });
+                    });
+                } else {
+                    console.error('Error response:', data);
+                    alert(data.message || 'Failed to fetch available time slots. Please try again.');
                 }
             } catch (error) {
-                console.error('Error fetching expert details:', error);
-                alert('Failed to load expert details. Please try again later.');
+                console.error('Error fetching time slots:', error);
+                alert('Failed to fetch available time slots. Please try again.');
             }
-        }
-
-        // Fetch expert details when page loads
-        document.addEventListener('DOMContentLoaded', fetchExpertDetails);
-
-        // Handle time slot selection
-        const timeSlots = document.querySelectorAll('.time-slot');
-        timeSlots.forEach(slot => {
-            slot.addEventListener('click', () => {
-                timeSlots.forEach(s => s.classList.remove('selected'));
-                slot.classList.add('selected');
-            });
         });
 
         // Handle form submission
         document.getElementById('consultationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const token = localStorage.getItem('token');
+            if (!selectedTimeSlot) {
+                alert('Please select a time slot');
+                return;
+            }
+
+            const token = localStorage.getItem('authToken');
             if (!token) {
                 alert('Please log in to book a consultation');
                 return;
@@ -265,8 +287,8 @@
             const formData = {
                 expert_id: expertId,
                 consultation_date: document.getElementById('consultation_date').value,
-                consultation_time: document.getElementById('consultation_time').value,
-                consultation_type: 'video', // Default to video consultation
+                consultation_time: selectedTimeSlot,
+                consultation_type: 'video',
                 patient_name: document.getElementById('patient_name').value,
                 patient_email: document.getElementById('patient_email').value,
                 patient_phone: document.getElementById('patient_phone').value,
@@ -275,23 +297,31 @@
             };
 
             try {
+                console.log('Submitting booking:', formData);
                 const response = await fetch('http://localhost:5000/book-consultation', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': token
                     },
                     body: JSON.stringify(formData)
                 });
 
+                console.log('Booking response status:', response.status);
                 const data = await response.json();
+                console.log('Booking response data:', data);
                 
                 if (response.ok) {
                     alert('Consultation booked successfully! Please proceed to payment.');
-                    // Here you can redirect to payment page or show payment form
                     window.location.href = 'payment.html?consultation_id=' + data.consultation_id;
                 } else {
-                    alert('Failed to book consultation: ' + data.message);
+                    if (response.status === 409) {
+                        alert('This time slot is no longer available. Please select another slot.');
+                        // Refresh available slots
+                        document.getElementById('consultation_date').dispatchEvent(new Event('change'));
+                    } else {
+                        alert('Failed to book consultation: ' + data.message);
+                    }
                 }
             } catch (error) {
                 console.error('Error booking consultation:', error);
