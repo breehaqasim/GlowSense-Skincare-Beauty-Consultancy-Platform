@@ -269,12 +269,135 @@ def get_matched_experts(current_user):
         print(f"Error fetching experts: {str(e)}")
         return jsonify({'message': 'Failed to fetch experts', 'error': str(e)}), 500
 
+# Route to check slot availability
+@app.route('/check-slot-availability', methods=['GET'])
+@token_required
+def check_slot_availability(current_user):
+    try:
+        expert_id = request.args.get('expert_id')
+        date = request.args.get('date')
+        
+        if not expert_id or not date:
+            return jsonify({'message': 'Missing required parameters'}), 400
+            
+        # Convert date to day of week (0 = Sunday, 6 = Saturday)
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+        day_of_week = date_obj.weekday()
+        if day_of_week == 6:  # Convert Sunday from 6 to 0
+            day_of_week = 0
+            
+        # Get expert's available time slots for the day
+        expert_slots = supabase.table('expert_time_slots')\
+            .select('start_time, end_time, slot_duration')\
+            .eq('expert_id', expert_id)\
+            .eq('day_of_week', day_of_week)\
+            .eq('is_available', True)\
+            .execute()
+            
+        if not expert_slots.data:
+            return jsonify({
+                'message': 'No available slots for this day',
+                'available_slots': []
+            }), 200
+            
+        # Get already booked slots for the date
+        booked_slots = supabase.table('booked_slots')\
+            .select('time_slot')\
+            .eq('expert_id', expert_id)\
+            .eq('consultation_date', date)\
+            .execute()
+            
+        booked_times = [slot['time_slot'] for slot in booked_slots.data]
+        
+        # Generate all possible time slots based on expert's schedule
+        available_slots = []
+        for slot in expert_slots.data:
+            start = datetime.strptime(slot['start_time'], '%H:%M:%S')
+            end = datetime.strptime(slot['end_time'], '%H:%M:%S')
+            duration = slot['slot_duration']
+            
+            current = start
+            while current + timedelta(minutes=duration) <= end:
+                time_str = current.strftime('%H:%M')
+                if time_str not in booked_times:
+                    available_slots.append(time_str)
+                current += timedelta(minutes=duration)
+        
+        return jsonify({
+            'available_slots': available_slots
+        }), 200
+        
+    except Exception as e:
+        print(f"Error checking slot availability: {str(e)}")
+        return jsonify({'message': 'Failed to check slot availability'}), 500
+
 # Route for booking consultation
 @app.route('/book-consultation', methods=['POST'])
 @token_required
 def book_consultation(current_user):
     try:
         data = request.get_json()
+        
+        # Verify the slot is within expert's available time slots
+        date_obj = datetime.strptime(data.get('consultation_date'), '%Y-%m-%d')
+        day_of_week = date_obj.weekday()
+        if day_of_week == 6:  # Convert Sunday from 6 to 0
+            day_of_week = 0
+        
+        time_obj = datetime.strptime(data.get('consultation_time'), '%H:%M').time()
+        
+        # Check if the slot is in expert's schedule
+        expert_slot = supabase.table('expert_time_slots')\
+            .select('*')\
+            .eq('expert_id', data.get('expert_id'))\
+            .eq('day_of_week', day_of_week)\
+            .eq('is_available', True)\
+            .execute()
+            
+        if not expert_slot.data:
+            return jsonify({
+                "message": "This time slot is not in the expert's schedule."
+            }), 400
+            
+        slot_valid = False
+        for slot in expert_slot.data:
+            start = datetime.strptime(slot['start_time'], '%H:%M:%S').time()
+            end = datetime.strptime(slot['end_time'], '%H:%M:%S').time()
+            if start <= time_obj <= end:
+                slot_valid = True
+                break
+                
+        if not slot_valid:
+            return jsonify({
+                "message": "Selected time is outside expert's available hours."
+            }), 400
+        
+        # Check if the slot is already booked
+        check_slot = supabase.table('booked_slots')\
+            .select('id')\
+            .eq('expert_id', data.get('expert_id'))\
+            .eq('consultation_date', data.get('consultation_date'))\
+            .eq('time_slot', data.get('consultation_time'))\
+            .execute()
+            
+        if check_slot.data:
+            return jsonify({
+                "message": "This time slot is no longer available. Please select another slot."
+            }), 409
+        
+        # Create booked slot record
+        slot_data = {
+            'expert_id': data.get('expert_id'),
+            'consultation_date': data.get('consultation_date'),
+            'time_slot': data.get('consultation_time'),
+            'user_id': current_user.id
+        }
+        
+        # Insert into booked_slots table
+        slot_result = supabase.table('booked_slots').insert(slot_data).execute()
+        
+        if not slot_result.data:
+            return jsonify({"message": "Failed to book time slot"}), 500
         
         # Create consultation record
         consultation_data = {
@@ -295,7 +418,9 @@ def book_consultation(current_user):
         result = supabase.table('consultations').insert(consultation_data).execute()
         
         if not result.data:
-            return jsonify({"message": "Failed to book consultation"}), 500
+            # If consultation creation fails, delete the booked slot
+            supabase.table('booked_slots').delete().eq('id', slot_result.data[0]['id']).execute()
+            return jsonify({"message": "Failed to create consultation"}), 500
             
         return jsonify({
             "message": "Consultation booked successfully",
