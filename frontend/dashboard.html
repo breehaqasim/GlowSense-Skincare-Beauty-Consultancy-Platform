@@ -144,6 +144,7 @@
                     historyContainer.innerHTML = '<p class="placeholder-message">You have no past skincare submissions.</p>';
                 } else {
                     let historyHtml = '';
+                    let bookingsHtml = '';
                     dashboardData.consultations.forEach(consult => {
                         // Format date
                         const date = new Date(consult.created_at);
@@ -167,36 +168,39 @@
                             concernDisplay = `${type}: ${details.substring(0, 50)}${details.length > 50 ? '...' : ''}`;
                         }
 
-                        historyHtml += `
-                            <div class="history-item">
-                                <div class="history-item-field">${formattedDate}</div>
-                                <div class="history-item-field">${concernDisplay}</div>
-                                <div class="history-item-field">${statusText}</div>
-                            </div>
-                        `;
-                    });
-                    historyContainer.innerHTML = historyHtml;
-                }
+                        // Add to history if not scheduled
+                        if (consult.status.toLowerCase() !== 'scheduled') {
+                            historyHtml += `
+                                <div class="history-item">
+                                    <div class="history-item-field">${formattedDate}</div>
+                                    <div class="history-item-field">${concernDisplay}</div>
+                                    <div class="history-item-field">${statusText}</div>
+                                </div>
+                            `;
+                        }
 
-                // For bookings, only display if there are actual bookings in the data
-                if (dashboardData.bookings && dashboardData.bookings.length > 0) {
-                    let bookingsHtml = '';
-                    dashboardData.bookings.forEach(booking => {
-                        const bookingDate = new Date(booking.date);
-                        const formattedDate = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
-                        
-                        bookingsHtml += `
-                            <div class="history-item">
-                                <div class="history-item-field">${formattedDate}</div>
-                                <div class="history-item-field">${booking.doctor_name}</div>
-                                <div class="history-item-field">${booking.type}</div>
-                                <div class="history-item-field">${booking.status}</div>
-                            </div>
-                        `;
+                        // Add to bookings if scheduled
+                        if (consult.status.toLowerCase() === 'scheduled' && consult.scheduled_time) {
+                            const scheduledDate = new Date(consult.scheduled_time);
+                            const formattedScheduledDate = `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')}`;
+                            const formattedTime = scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            
+                            // Get the selected expert's name
+                            const expertName = consult.selected_expert ? consult.selected_expert.name : 
+                                             (consult.expert ? consult.expert.name : 'Not assigned');
+                            
+                            bookingsHtml += `
+                                <div class="history-item">
+                                    <div class="history-item-field">${formattedScheduledDate} ${formattedTime}</div>
+                                    <div class="history-item-field">${expertName}</div>
+                                    <div class="history-item-field">${consult.consultation_type || 'Video'}</div>
+                                    <div class="history-item-field">Scheduled</div>
+                                </div>
+                            `;
+                        }
                     });
-                    bookingContainer.innerHTML = bookingsHtml;
-                } else {
-                    bookingContainer.innerHTML = '<p class="placeholder-message">No bookings found.</p>';
+                    historyContainer.innerHTML = historyHtml || '<p class="placeholder-message">You have no past skincare submissions.</p>';
+                    bookingContainer.innerHTML = bookingsHtml || '<p class="placeholder-message">No scheduled consultations found.</p>';
                 }
                 
             } catch (error) {

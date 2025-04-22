@@ -258,6 +258,7 @@ footer {
 .matched-experts {
     padding: 4rem 5%;
     background-color: #fff;
+    display: none; /* Initially hidden */
 }
 
 .matched-experts h2 {
@@ -274,15 +275,22 @@ footer {
     font-size: 1.1rem;
 }
 
-.experts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
+/* Expert Carousel Styles */
+.experts-carousel {
+    position: relative;
     max-width: 1200px;
     margin: 0 auto;
+    overflow: hidden;
+}
+
+.experts-grid {
+    display: flex;
+    transition: transform 0.5s ease;
+    gap: 2rem;
 }
 
 .expert-card {
+    flex: 0 0 calc(33.333% - 1.33rem);
     background: white;
     border-radius: 12px;
     padding: 1.5rem;
@@ -293,6 +301,57 @@ footer {
 .expert-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.carousel-nav {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.carousel-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ddd;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.carousel-dot.active {
+    background-color: #8E97DD;
+}
+
+.carousel-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #8E97DD;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: background-color 0.3s ease;
+    z-index: 1;
+}
+
+.carousel-button:hover {
+    background-color: #7A84C6;
+}
+
+.carousel-prev {
+    left: -50px;
+}
+
+.carousel-next {
+    right: -50px;
 }
 
 .expert-header {

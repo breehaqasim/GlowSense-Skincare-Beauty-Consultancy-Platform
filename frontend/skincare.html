@@ -106,8 +106,19 @@
         <h2>Matched Experts</h2>
         <p class="section-description">Based on your skincare concerns, here are the best-matched dermatologists for you</p>
         
-        <div class="experts-grid" id="expertsGrid">
-            <!-- Expert cards will be dynamically inserted here -->
+        <div class="experts-carousel">
+            <button class="carousel-button carousel-prev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="experts-grid" id="expertsGrid">
+                <!-- Expert cards will be dynamically inserted here -->
+            </div>
+            <button class="carousel-button carousel-next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="carousel-nav" id="carouselNav">
+                <!-- Dots will be dynamically inserted here -->
+            </div>
         </div>
     </section>
 
@@ -155,8 +166,27 @@
                 });
             }
 
-            // Fetch matched experts when the page loads
-            fetchMatchedExperts();
+            // Initial load - hide matched experts section if no submission yet
+            const matchedExpertsSection = document.querySelector('.matched-experts');
+            matchedExpertsSection.style.display = 'none';
+        });
+
+        // Listen for message from skincare-form to close it
+        window.addEventListener('message', function(event) {
+            if (event.data === 'closeForm') {
+                closePopup();
+            } else if (event.data === 'fetchMatchedExperts') {
+                // Fetch matched experts after form submission
+                fetchMatchedExperts().then(() => {
+                    // Scroll to matched experts section after a short delay
+                    setTimeout(() => {
+                        document.querySelector('.matched-experts').scrollIntoView({ 
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }, 3500); // Wait for form to close (3000ms) + extra time (500ms)
+                });
+            }
         });
 
         // Function to fetch matched experts
@@ -173,10 +203,13 @@
                     return;
                 }
 
-                console.log('Fetching experts...');
-                const response = await fetch('http://localhost:5000/get-matched-experts', {
+                const matchedExpertsSection = document.querySelector('.matched-experts');
+                matchedExpertsSection.style.display = 'block';
+
+                console.log('Fetching matched experts...');
+                const response = await authenticatedFetch('http://localhost:5000/get-matched-experts', {
                     headers: {
-                        'Authorization': token
+                        'Content-Type': 'application/json'
                     }
                 });
 
@@ -185,7 +218,15 @@
                 console.log('Received experts data:', data);
 
                 if (response.ok) {
-                    displayExperts(data.experts);
+                    if (data.experts && data.experts.length > 0) {
+                        displayExperts(data.experts);
+                    } else {
+                        document.getElementById('expertsGrid').innerHTML = `
+                            <div class="no-experts">
+                                <p>No experts found matching your skincare concerns. Please try submitting different concerns or contact support.</p>
+                            </div>
+                        `;
+                    }
                 } else {
                     throw new Error(data.message || 'Failed to fetch experts');
                 }
@@ -200,20 +241,12 @@
             }
         }
 
-        // Function to display experts
+        // Function to display experts with carousel
         function displayExperts(experts) {
             const expertsGrid = document.getElementById('expertsGrid');
-            console.log('Displaying experts:', experts);
+            const carouselNav = document.getElementById('carouselNav');
             
-            if (!experts || experts.length === 0) {
-                expertsGrid.innerHTML = `
-                    <div class="no-experts">
-                        <p>No experts found for your query. Please try a different search.</p>
-                    </div>
-                `;
-                return;
-            }
-
+            // Create expert cards
             expertsGrid.innerHTML = experts.map(expert => {
                 return `
                     <div class="expert-card">
@@ -246,6 +279,80 @@
                     </div>
                 `;
             }).join('');
+
+            // Initialize carousel
+            const totalExperts = experts.length;
+            const totalSlides = Math.ceil(totalExperts / 3);
+            let currentSlide = 0;
+            let autoplayInterval;
+
+            // Create navigation dots
+            carouselNav.innerHTML = Array.from({ length: totalSlides }, (_, i) => `
+                <div class="carousel-dot${i === 0 ? ' active' : ''}" data-slide="${i}"></div>
+            `).join('');
+
+            // Function to move to a specific slide
+            function goToSlide(slideIndex) {
+                currentSlide = slideIndex;
+                const offset = -currentSlide * 100;
+                expertsGrid.style.transform = `translateX(${offset}%)`;
+                
+                // Update active dot
+                document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentSlide);
+                });
+            }
+
+            // Function to move to the next slide
+            function nextSlide() {
+                currentSlide = (currentSlide + 1) % totalSlides;
+                goToSlide(currentSlide);
+            }
+
+            // Function to move to the previous slide
+            function prevSlide() {
+                currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+                goToSlide(currentSlide);
+            }
+
+            // Add click event listeners to navigation dots
+            document.querySelectorAll('.carousel-dot').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    const slideIndex = parseInt(dot.dataset.slide);
+                    goToSlide(slideIndex);
+                    resetAutoplay();
+                });
+            });
+
+            // Add click event listeners to navigation buttons
+            document.querySelector('.carousel-prev').addEventListener('click', () => {
+                prevSlide();
+                resetAutoplay();
+            });
+
+            document.querySelector('.carousel-next').addEventListener('click', () => {
+                nextSlide();
+                resetAutoplay();
+            });
+
+            // Function to start autoplay
+            function startAutoplay() {
+                autoplayInterval = setInterval(nextSlide, 15000); // Change slide every 15 seconds
+            }
+
+            // Function to reset autoplay
+            function resetAutoplay() {
+                clearInterval(autoplayInterval);
+                startAutoplay();
+            }
+
+            // Start autoplay
+            startAutoplay();
+
+            // Pause autoplay when hovering over the carousel
+            const carousel = document.querySelector('.experts-carousel');
+            carousel.addEventListener('mouseenter', () => clearInterval(autoplayInterval));
+            carousel.addEventListener('mouseleave', startAutoplay);
         }
 
         // Function to handle booking consultation
@@ -279,13 +386,6 @@
                 popupOverlay.classList.add('active');
             });
         }
-
-        // Listen for message from skincare-form to close it
-        window.addEventListener('message', function(event) {
-            if (event.data === 'closeForm') {
-                closePopup();
-            }
-        });
     </script>
 </body>
 </html> 

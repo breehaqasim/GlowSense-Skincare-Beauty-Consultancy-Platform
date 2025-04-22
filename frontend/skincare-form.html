@@ -25,7 +25,7 @@
                         <label for="inquiryType">Inquiry Type*</label>
                         <select id="inquiryType" name="inquiryType" required>
                             <option value="dark circles">Dark Circles</option>
-                            <option value="acne">Acne Treatment</option>
+                            <option value="acne treatment">Acne Treatment</option>
                             <option value="antiaging">Anti-aging</option>
                             <option value="hyperpigmentation">Hyperpigmentation</option>
                             <option value="sensitivity">Skin Sensitivity</option>
@@ -196,11 +196,10 @@
                     throw new Error('Please log in to submit your skincare concerns');
                 }
                 
-                const response = await fetch('http://localhost:5000/submit-skincare-concerns', {
+                const response = await authenticatedFetch('http://localhost:5000/submit-skincare-concerns', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': token
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         concerns: `${inquiryType}: ${concerns}`,
@@ -221,6 +220,9 @@
                         </div>`;
                     document.getElementById('skincareForm').reset();
                     document.getElementById('fileName').textContent = 'No file chosen';
+                    
+                    // Notify parent window to fetch matched experts
+                    window.parent.postMessage('fetchMatchedExperts', '*');
                     
                     // Automatically close the form after 3 seconds
                     setTimeout(() => {

@@ -5,6 +5,9 @@ from supabase_client import supabase
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
+import re
+import requests
+from sqlalchemy import text
 
 app = Flask(__name__)
 # Configure CORS to allow requests from the frontend
@@ -13,18 +16,28 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Load configuration
 app.config.from_object(Config)
 
+# Add this near your other configuration
+ABSTRACT_API_KEY = '87446ea44b434e9686adde88f110730d'  # Abstract API key for email validation
+ABSTRACT_API_KEY_EMAIL = '87446ea44b434e9686adde88f110730d'  # Email validation
+ABSTRACT_API_KEY_PHONE = 'b4292cb0ff264a9dabd90dc00828a301'  # Phone validation
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
             return jsonify({'message': 'Token is missing'}), 401
         try:
+            # Extract token from Bearer format
+            token = auth_header.split(' ')[1] if auth_header.startswith('Bearer ') else auth_header
+            
             # Verify token with Supabase
             user_response = supabase.auth.get_user(token)
             # Extract the user data from the response
             user = user_response.user
             return f(user, *args, **kwargs)
+        except IndexError:
+            return jsonify({'message': 'Invalid token format'}), 401
         except Exception as e:
             print(f"Token verification error: {str(e)}")
             return jsonify({'message': 'Token is invalid'}), 401
@@ -131,7 +144,12 @@ def get_user_consultations(current_user):
         consultations = supabase.table('consultations')\
             .select('''
                 *,
-                experts (
+                expert:expert_id (
+                    name,
+                    specialization,
+                    email
+                ),
+                selected_expert:selected_expert_id (
                     name,
                     specialization,
                     email
@@ -140,6 +158,8 @@ def get_user_consultations(current_user):
             .eq('user_id', current_user.id)\
             .order('created_at', desc=True)\
             .execute()
+        
+        print(f"Raw consultation data: {consultations.data}")  # Debug log
         
         # Fetch user info
         user_info = supabase.table('users')\
@@ -151,18 +171,30 @@ def get_user_consultations(current_user):
         # Format the response
         formatted_consultations = []
         for consultation in consultations.data:
-            expert_info = consultation.get('experts', {})
+            expert_info = consultation.get('expert', {})
+            selected_expert_info = consultation.get('selected_expert', {})
+            
+            print(f"Processing consultation: {consultation.get('id')}")  # Debug log
+            print(f"Expert info: {expert_info}")  # Debug log
+            print(f"Selected expert info: {selected_expert_info}")  # Debug log
+            
             formatted_consultations.append({
                 'id': consultation.get('id'),
                 'concerns': consultation.get('concerns'),
                 'status': consultation.get('status'),
                 'created_at': consultation.get('created_at'),
                 'scheduled_time': consultation.get('scheduled_time'),
+                'consultation_type': consultation.get('consultation_type'),
                 'expert': {
                     'name': expert_info.get('name') if expert_info else None,
                     'specialization': expert_info.get('specialization') if expert_info else None,
                     'email': expert_info.get('email') if expert_info else None
-                } if expert_info else None
+                } if expert_info else None,
+                'selected_expert': {
+                    'name': selected_expert_info.get('name') if selected_expert_info else None,
+                    'specialization': selected_expert_info.get('specialization') if selected_expert_info else None,
+                    'email': selected_expert_info.get('email') if selected_expert_info else None
+                } if selected_expert_info else None
             })
         
         return jsonify({
@@ -223,9 +255,10 @@ def submit_skincare_concerns(current_user):
 @token_required
 def get_matched_experts(current_user):
     try:
-        print("Starting expert matching process...")  # Debug log
+        print("\n=== Starting Expert Matching Process ===")
+        print(f"User ID: {current_user.id}")
         
-        # Get the user's latest consultation to check their inquiry type
+        # Get the user's latest consultation
         latest_consultation = supabase.table('consultations')\
             .select('concerns')\
             .eq('user_id', current_user.id)\
@@ -233,95 +266,165 @@ def get_matched_experts(current_user):
             .limit(1)\
             .execute()
             
+        print(f"\nLatest consultation data: {latest_consultation.data}")
+        
         inquiry_type = None
         if latest_consultation.data:
             concerns_text = latest_consultation.data[0].get('concerns', '')
+            print(f"\nRaw concerns text: {concerns_text}")
+            
+            # New extraction logic
             if 'Type:' in concerns_text:
-                inquiry_type = concerns_text.split('Type:')[1].split('\n')[0].strip().lower()
+                # Extract everything between "Type:" and "Details:"
+                inquiry_type = concerns_text.split('Type:')[1].split('Details:')[0].strip().lower()
+            elif ':' in concerns_text:
+                # Fallback to old logic if format is different
+                inquiry_type = concerns_text.split(':')[0].strip().lower()
+            else:
+                inquiry_type = 'other'
+                
+            # Remove the word 'type' if it was accidentally included
+            if inquiry_type.startswith('type'):
+                inquiry_type = inquiry_type.split('type:')[-1].strip()
         
-        print(f"Searching for experts with specialization: {inquiry_type}")  # Debug log
+        print(f"\nExtracted inquiry type: {inquiry_type}")
         
         # Query experts based on specialization matching inquiry type
-        if inquiry_type:
-            experts = supabase.table('experts')\
-                .select('id, name, email, specialization, bio, experience, consultation_price')\
-                .ilike('specialization', f'%{inquiry_type}%')\
-                .execute()
+        if inquiry_type and inquiry_type != 'other':
+            try:
+                print(f"\nFetching all experts from database...")
+                # Get all experts
+                experts = supabase.table('experts')\
+                    .select('id, name, email, specialization, bio, experience, consultation_price')\
+                    .execute()
+                
+                print(f"\nTotal experts in database: {len(experts.data)}")
+                
+                # Filter experts whose specialization matches the inquiry type
+                matched_experts = []
+                print("\nMatching process:")
+                for expert in experts.data:
+                    print(f"\nChecking expert: {expert['name']}")
+                    print(f"Expert specialization: {expert['specialization']}")
+                    specializations = [s.strip().lower() for s in expert['specialization'].split(',')]
+                    print(f"Parsed specializations: {specializations}")
+                    print(f"Comparing with inquiry type: '{inquiry_type}'")
+                    
+                    if any(s == inquiry_type for s in specializations):
+                        print(f"✓ MATCH FOUND: {expert['name']}")
+                        matched_experts.append(expert)
+                    else:
+                        print(f"✗ NO MATCH: Specializations don't match inquiry type")
+                
+                print(f"\nTotal matches found: {len(matched_experts)}")
+                if matched_experts:
+                    print("\nMatched experts:")
+                    for expert in matched_experts:
+                        print(f"- {expert['name']} ({expert['specialization']})")
+                
+                print("\n=== Expert Matching Process Complete ===")
+                return jsonify({
+                    'experts': matched_experts
+                }), 200
+                
+            except Exception as e:
+                print(f"\nError in expert matching: {str(e)}")
+                return jsonify({
+                    'message': 'Failed to fetch experts',
+                    'error': str(e)
+                }), 500
         else:
-            # If no inquiry type, get all experts
+            print("\nNo valid inquiry type found - returning all experts")
             experts = supabase.table('experts')\
                 .select('id, name, email, specialization, bio, experience, consultation_price')\
                 .execute()
             
-        print(f"Found {len(experts.data)} matching experts")  # Debug log
-        
-        if not experts.data:
             return jsonify({
-                'message': 'No experts found for your specific concerns.',
-                'experts': []
+                'experts': experts.data
             }), 200
-            
-        return jsonify({
-            'experts': experts.data
-        }), 200
-        
     except Exception as e:
-        print(f"Error fetching experts: {str(e)}")
-        return jsonify({'message': 'Failed to fetch experts', 'error': str(e)}), 500
+        print(f"\nGlobal error in get_matched_experts: {str(e)}")
+        return jsonify({
+            'message': 'Failed to process expert matching',
+            'error': str(e)
+        }), 500
 
-# Route to check slot availability
+def generate_time_slots(start_time, end_time, duration_minutes=30):
+    """Generate time slots between start and end time with given duration."""
+    slots = []
+    current = datetime.strptime(start_time, '%H:%M:%S')
+    end = datetime.strptime(end_time, '%H:%M:%S')
+    
+    while current < end:
+        slot_end = current + timedelta(minutes=duration_minutes)
+        if slot_end <= end:
+            slots.append({
+                'start': current.strftime('%H:%M'),
+                'end': slot_end.strftime('%H:%M')
+            })
+        current = slot_end
+    
+    return slots
+
 @app.route('/check-slot-availability', methods=['GET'])
-@token_required
-def check_slot_availability(current_user):
+def check_slot_availability():
     try:
         expert_id = request.args.get('expert_id')
-        date = request.args.get('date')
+        date_str = request.args.get('date')
         
-        if not expert_id or not date:
-            return jsonify({'message': 'Missing required parameters'}), 400
+        if not expert_id or not date_str:
+            return jsonify({'error': 'Missing expert_id or date parameter'}), 400
             
-        # Convert date to day of week (0 = Sunday, 6 = Saturday)
-        date_obj = datetime.strptime(date, '%Y-%m-%d')
-        day_of_week = date_obj.weekday()
-        if day_of_week == 6:  # Convert Sunday from 6 to 0
-            day_of_week = 0
-            
-        # Get expert's available time slots for the day
-        expert_slots = supabase.table('expert_time_slots')\
+        # Parse the date to get day of week (0 = Monday, 6 = Sunday)
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        day_of_week = date_obj.weekday() + 1  # Convert to 1-7 format
+        
+        print(f"Checking availability for expert {expert_id} on date {date_str} (day of week: {day_of_week})")
+        
+        # Get the expert's time slots for this day
+        result = supabase.table('expert_time_slots')\
             .select('start_time, end_time, slot_duration')\
             .eq('expert_id', expert_id)\
             .eq('day_of_week', day_of_week)\
             .eq('is_available', True)\
             .execute()
+        
+        print(f"Expert time slots result: {result.data}")
+        
+        if not result.data:
+            print("No time slots found for this day")
+            return jsonify({'available_slots': []}), 200
             
-        if not expert_slots.data:
-            return jsonify({
-                'message': 'No available slots for this day',
-                'available_slots': []
-            }), 200
-            
-        # Get already booked slots for the date
+        # Generate all possible time slots for this time range
+        all_slots = generate_time_slots(
+            result.data[0]['start_time'],
+            result.data[0]['end_time'],
+            30  # Fixed 30-minute duration
+        )
+        
+        print(f"Generated slots: {all_slots}")
+        
+        # Get booked slots for this expert on this date
         booked_slots = supabase.table('booked_slots')\
             .select('time_slot')\
             .eq('expert_id', expert_id)\
-            .eq('consultation_date', date)\
+            .eq('consultation_date', date_str)\
             .execute()
-            
-        booked_times = [slot['time_slot'] for slot in booked_slots.data]
         
-        # Generate all possible time slots based on expert's schedule
-        available_slots = []
-        for slot in expert_slots.data:
-            start = datetime.strptime(slot['start_time'], '%H:%M:%S')
-            end = datetime.strptime(slot['end_time'], '%H:%M:%S')
-            duration = slot['slot_duration']
-            
-            current = start
-            while current + timedelta(minutes=duration) <= end:
-                time_str = current.strftime('%H:%M')
-                if time_str not in booked_times:
-                    available_slots.append(time_str)
-                current += timedelta(minutes=duration)
+        print(f"Booked slots: {booked_slots.data}")
+        
+        # Convert booked slots to set of start times for easy comparison
+        booked_times = {slot['time_slot'] for slot in booked_slots.data} if booked_slots.data else set()
+        
+        print(f"Booked times: {booked_times}")
+        
+        # Filter out booked slots
+        available_slots = [
+            slot for slot in all_slots 
+            if slot['start'] not in booked_times
+        ]
+        
+        print(f"Available slots after filtering: {available_slots}")
         
         return jsonify({
             'available_slots': available_slots
@@ -329,7 +432,8 @@ def check_slot_availability(current_user):
         
     except Exception as e:
         print(f"Error checking slot availability: {str(e)}")
-        return jsonify({'message': 'Failed to check slot availability'}), 500
+        print(f"Full error details:", e)
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Route for booking consultation
 @app.route('/book-consultation', methods=['POST'])
@@ -399,10 +503,22 @@ def book_consultation(current_user):
         if not slot_result.data:
             return jsonify({"message": "Failed to book time slot"}), 500
         
-        # Create consultation record
+        # Get the latest consultation for this user
+        latest_consultation = supabase.table('consultations')\
+            .select('id')\
+            .eq('user_id', current_user.id)\
+            .order('created_at', desc=True)\
+            .limit(1)\
+            .execute()
+            
+        if not latest_consultation.data:
+            return jsonify({"message": "No consultation found to update"}), 404
+            
+        consultation_id = latest_consultation.data[0]['id']
+        
+        # Update the existing consultation record
         consultation_data = {
-            'user_id': current_user.id,
-            'expert_id': data.get('expert_id'),
+            'selected_expert_id': data.get('expert_id'),
             'status': 'scheduled',
             'scheduled_time': f"{data.get('consultation_date')} {data.get('consultation_time')}",
             'consultation_type': data.get('consultation_type'),
@@ -410,26 +526,160 @@ def book_consultation(current_user):
             'patient_email': data.get('patient_email'),
             'patient_phone': data.get('patient_phone'),
             'patient_age': data.get('patient_age'),
-            'patient_gender': data.get('patient_gender'),
-            'created_at': datetime.utcnow().isoformat()
+            'patient_gender': data.get('patient_gender')
         }
         
-        # Insert into consultations table
-        result = supabase.table('consultations').insert(consultation_data).execute()
+        # Update the consultation
+        result = supabase.table('consultations')\
+            .update(consultation_data)\
+            .eq('id', consultation_id)\
+            .execute()
         
         if not result.data:
-            # If consultation creation fails, delete the booked slot
+            # If consultation update fails, delete the booked slot
             supabase.table('booked_slots').delete().eq('id', slot_result.data[0]['id']).execute()
-            return jsonify({"message": "Failed to create consultation"}), 500
+            return jsonify({"message": "Failed to update consultation"}), 500
             
         return jsonify({
             "message": "Consultation booked successfully",
-            "consultation_id": result.data[0]['id'] if result.data else None
+            "consultation_id": consultation_id
         }), 200
         
     except Exception as e:
         print(f"Error booking consultation: {str(e)}")
         return jsonify({"message": f"Failed to book consultation: {str(e)}"}), 500
+
+# Route for validating consultation form fields
+@app.route('/validate-consultation-fields', methods=['POST'])
+def validate_consultation_fields():
+    try:
+        data = request.get_json()
+        errors = {}
+        
+        # Validate name (letters and spaces only)
+        name = data.get('patient_name', '').strip()
+        if not name:
+            errors['name'] = 'Name is required'
+        elif not all(c.isalpha() or c.isspace() for c in name):
+            errors['name'] = 'Name should contain only letters and spaces'
+            
+        # Validate email
+        email = data.get('patient_email', '').strip()
+        if not email:
+            errors['email'] = 'Email is required'
+        elif not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            errors['email'] = 'Please enter a valid email address'
+            
+        # Validate phone (numbers only, 10-15 digits)
+        phone = data.get('patient_phone', '').strip()
+        if not phone:
+            errors['phone'] = 'Phone number is required'
+        elif not re.match(r'^\d{10,15}$', phone):
+            errors['phone'] = 'Phone number should be between 10-15 digits'
+            
+        # Validate age (positive number between 0-150)
+        age = data.get('patient_age')
+        try:
+            age = int(age)
+            if age < 0 or age > 150:
+                errors['age'] = 'Age should be between 0 and 150'
+        except (ValueError, TypeError):
+            errors['age'] = 'Please enter a valid age'
+            
+        # Validate gender
+        gender = data.get('patient_gender')
+        if not gender or gender not in ['male', 'female', 'other']:
+            errors['gender'] = 'Please select a valid gender'
+            
+        if errors:
+            return jsonify({
+                'valid': False,
+                'errors': errors
+            }), 400
+            
+        return jsonify({
+            'valid': True
+        }), 200
+        
+    except Exception as e:
+        print(f"Validation error: {str(e)}")
+        return jsonify({
+            'valid': False,
+            'errors': {'general': 'Validation failed. Please try again.'}
+        }), 500
+
+# Add new endpoint for email validation
+@app.route('/validate-email', methods=['POST'])
+def validate_email():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({
+                'valid': False,
+                'error': 'Email is required'
+            }), 400
+            
+        # Standard email validation regex
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        
+        # Check if email matches the pattern
+        is_valid = bool(re.match(email_regex, email))
+        
+        return jsonify({
+            'valid': is_valid,
+            'details': {
+                'message': 'Email format is valid' if is_valid else 'Please enter a valid email address'
+            }
+        })
+            
+    except Exception as e:
+        print(f"Email validation error: {str(e)}")
+        return jsonify({
+            'valid': False,
+            'error': str(e)
+        }), 500
+
+# Add new endpoint for phone validation
+@app.route('/validate-phone', methods=['POST'])
+def validate_phone():
+    try:
+        data = request.get_json()
+        phone = data.get('phone')
+        
+        if not phone:
+            return jsonify({
+                'valid': False,
+                'error': 'Phone number is required'
+            }), 400
+            
+        # Remove any non-digit characters
+        phone_digits = ''.join(filter(str.isdigit, phone))
+        
+        # Check if the phone number has 10-15 digits
+        is_valid = 10 <= len(phone_digits) <= 15
+        
+        # Format the phone number for display
+        formatted_number = phone_digits
+        if len(phone_digits) == 10:  # Format as: (XXX) XXX-XXXX
+            formatted_number = f"({phone_digits[:3]}) {phone_digits[3:6]}-{phone_digits[6:]}"
+        
+        return jsonify({
+            'valid': is_valid,
+            'details': {
+                'is_valid': is_valid,
+                'formatted_number': formatted_number,
+                'message': 'Phone number is valid' if is_valid else 'Phone number should be between 10-15 digits'
+            }
+        })
+            
+    except Exception as e:
+        print(f"Phone validation error: {str(e)}")
+        return jsonify({
+            'valid': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

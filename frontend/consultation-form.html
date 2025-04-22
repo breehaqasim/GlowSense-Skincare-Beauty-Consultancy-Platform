@@ -116,23 +116,41 @@
         }
 
         .time-slot {
-            padding: 0.5rem;
-            text-align: center;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 10px 20px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: white;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .time-slot:hover {
-            border-color: #8E97DD;
-            background-color: #f8f9fe;
+            background-color: #f0f0f0;
         }
 
         .time-slot.selected {
-            background-color: #8E97DD;
+            background-color: #6c5ce7;
             color: white;
-            border-color: #8E97DD;
+            border-color: #6c5ce7;
+        }
+
+        /* Add styles for validation feedback */
+        .error-feedback {
+            color: #dc3545;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .form-group input.is-invalid,
+        .form-group select.is-invalid {
+            border-color: #dc3545;
+        }
+
+        .form-group input.is-valid,
+        .form-group select.is-valid {
+            border-color: #28a745;
         }
     </style>
 </head>
@@ -152,18 +170,22 @@
                 <div class="form-group">
                     <label for="patient_name">Full Name</label>
                     <input type="text" id="patient_name" required>
+                    <div class="error-feedback" id="patient_name_error"></div>
                 </div>
                 <div class="form-group">
                     <label for="patient_email">Email Address</label>
                     <input type="email" id="patient_email" required>
+                    <div class="error-feedback" id="patient_email_error"></div>
                 </div>
                 <div class="form-group">
                     <label for="patient_phone">Phone Number</label>
                     <input type="tel" id="patient_phone" required>
+                    <div class="error-feedback" id="patient_phone_error"></div>
                 </div>
                 <div class="form-group">
                     <label for="patient_age">Age</label>
                     <input type="number" id="patient_age" required>
+                    <div class="error-feedback" id="patient_age_error"></div>
                 </div>
                 <div class="form-group">
                     <label for="patient_gender">Gender</label>
@@ -173,6 +195,7 @@
                         <option value="female">Female</option>
                         <option value="other">Other</option>
                     </select>
+                    <div class="error-feedback" id="patient_gender_error"></div>
                 </div>
             </div>
 
@@ -184,16 +207,7 @@
                 </div>
                 <div class="form-group">
                     <label>Available Time Slots</label>
-                    <div class="time-slots">
-                        <div class="time-slot">11:00 AM</div>
-                        <div class="time-slot">11:30 AM</div>
-                        <div class="time-slot">12:00 PM</div>
-                        <div class="time-slot">12:30 PM</div>
-                        <div class="time-slot">01:00 PM</div>
-                        <div class="time-slot">01:30 PM</div>
-                        <div class="time-slot">02:00 PM</div>
-                        <div class="time-slot">02:30 PM</div>
-                    </div>
+                    <div class="time-slots" id="time_slots"></div>
                 </div>
             </div>
 
@@ -207,10 +221,18 @@
         const expertDataParam = urlParams.get('expert_data');
         let expertData;
         let expertId;
+        let selectedTimeSlot = null;  // Add this at the top with other variables
 
         try {
+            if (!expertDataParam) {
+                throw new Error('No expert data provided');
+            }
             expertData = JSON.parse(decodeURIComponent(expertDataParam));
             expertId = expertData.id;
+            
+            if (!expertId) {
+                throw new Error('Invalid expert ID');
+            }
             
             // Update the consultation info section
             document.getElementById('doctorName').textContent = expertData.name;
@@ -221,74 +243,177 @@
             window.parent.postMessage('closeForm', '*');
         }
 
-        // Handle date selection and fetch available slots
-        document.getElementById('consultation_date').addEventListener('change', async function(e) {
-            const date = e.target.value;
-            const token = localStorage.getItem('authToken');
+        // Function to format time for display
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const date = new Date();
+            date.setHours(parseInt(hours));
+            date.setMinutes(parseInt(minutes));
+            return date.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+            });
+        }
+
+        // Function to generate time slots from 11 AM to 2 PM
+        function generateTimeSlots() {
+            const slots = [];
+            const startHour = 11;
+            const endHour = 14; // 2 PM in 24-hour format
             
-            if (!token) {
-                alert('Please log in to view available slots');
+            for (let hour = startHour; hour < endHour; hour++) {
+                // First slot of the hour (XX:00-XX:30)
+                slots.push({
+                    start: `${hour.toString().padStart(2, '0')}:00`,
+                    end: `${hour.toString().padStart(2, '0')}:30`
+                });
+                
+                // Second slot of the hour (XX:30-YY:00)
+                slots.push({
+                    start: `${hour.toString().padStart(2, '0')}:30`,
+                    end: `${(hour + 1).toString().padStart(2, '0')}:00`
+                });
+            }
+            return slots;
+        }
+
+        // Function to display available time slots
+        function displayTimeSlots(availableSlots) {
+            console.log('Displaying available slots:', availableSlots);
+            const container = document.getElementById('time_slots');
+            container.innerHTML = '';
+
+            if (!availableSlots || availableSlots.length === 0) {
+                container.innerHTML = '<p>No available slots for this date</p>';
                 return;
             }
 
-            try {
-                console.log('Fetching slots for date:', date);
-                const response = await fetch(`http://localhost:5000/check-slot-availability?expert_id=${expertId}&date=${date}`, {
-                    headers: {
-                        'Authorization': token
-                    }
+            availableSlots.forEach(slot => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'time-slot';
+                
+                // Format the display time
+                const displayTime = `${formatTime(slot.start)} - ${formatTime(slot.end)}`;
+                button.textContent = displayTime;
+                
+                // Store the slot data
+                button.dataset.startTime = slot.start;
+                button.dataset.endTime = slot.end;
+                
+                button.addEventListener('click', function() {
+                    // Remove selected class from all buttons
+                    document.querySelectorAll('.time-slot').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+                    // Store selected time slot
+                    selectedTimeSlot = {
+                        start: this.dataset.startTime,
+                        end: this.dataset.endTime
+                    };
+                    console.log('Selected time slot:', selectedTimeSlot);
                 });
                 
+                container.appendChild(button);
+            });
+        }
+
+        // Handle date selection and fetch available slots
+        document.getElementById('consultation_date').addEventListener('change', async function() {
+            console.log('Date changed to:', this.value);
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                console.error('No auth token found');
+                alert('Please log in to book a consultation');
+                window.location.href = 'login.html';
+                return;
+            }
+            console.log('Auth token found:', token.substring(0, 10) + '...');
+
+            const selectedDate = this.value;
+            
+            if (!expertId) {
+                console.error('Expert ID is missing');
+                document.getElementById('time_slots').innerHTML = '<p>Error: Could not load time slots. Missing expert information.</p>';
+                return;
+            }
+            console.log('Using expert ID:', expertId);
+
+            try {
+                const url = `http://localhost:5000/check-slot-availability?expert_id=${expertId}&date=${selectedDate}`;
+                console.log('Fetching slots from URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Response headers:', Object.fromEntries([...response.headers]));
                 console.log('Response status:', response.status);
+
+                if (response.status === 401) {
+                    console.error('Unauthorized - clearing token');
+                    localStorage.removeItem('authToken');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
                 console.log('Response data:', data);
-                
-                if (response.ok) {
-                    // Update time slots display
-                    const timeSlotsContainer = document.querySelector('.time-slots');
-                    timeSlotsContainer.innerHTML = data.available_slots.map(slot => `
-                        <div class="time-slot" data-time="${slot}">${formatTime(slot)}</div>
-                    `).join('');
-                    
-                    // Reattach click handlers to new time slots
-                    const timeSlots = document.querySelectorAll('.time-slot');
-                    timeSlots.forEach(slot => {
-                        slot.addEventListener('click', () => {
-                            timeSlots.forEach(s => s.classList.remove('selected'));
-                            slot.classList.add('selected');
-                            selectedTimeSlot = slot.dataset.time;
-                        });
-                    });
-                } else {
-                    console.error('Error response:', data);
-                    alert(data.message || 'Failed to fetch available time slots. Please try again.');
+
+                if (!data.available_slots) {
+                    console.log('No available_slots in response data');
+                    document.getElementById('time_slots').innerHTML = '<p>No available slots for this date</p>';
+                    return;
                 }
+
+                console.log('Available slots:', data.available_slots);
+                displayTimeSlots(data.available_slots);
             } catch (error) {
-                console.error('Error fetching time slots:', error);
-                alert('Failed to fetch available time slots. Please try again.');
+                console.error('Detailed error:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+                document.getElementById('time_slots').innerHTML = '<p>Error loading available time slots. Please try again.</p>';
             }
         });
 
-        // Handle form submission
-        document.getElementById('consultationForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (!selectedTimeSlot) {
-                alert('Please select a time slot');
-                return;
-            }
+        // Set minimum date to today
+        const dateInput = document.getElementById('consultation_date');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
 
-            const token = localStorage.getItem('authToken');
-            if (!token) {
-                alert('Please log in to book a consultation');
-                return;
-            }
+        // If a date is already selected (e.g., after page refresh), fetch slots
+        if (dateInput.value) {
+            fetchAvailableSlots(dateInput.value);
+        }
 
+        // Debounce function to limit API calls
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Function to validate fields
+        async function validateField(field) {
             const formData = {
-                expert_id: expertId,
-                consultation_date: document.getElementById('consultation_date').value,
-                consultation_time: selectedTimeSlot,
-                consultation_type: 'video',
                 patient_name: document.getElementById('patient_name').value,
                 patient_email: document.getElementById('patient_email').value,
                 patient_phone: document.getElementById('patient_phone').value,
@@ -297,42 +422,189 @@
             };
 
             try {
-                console.log('Submitting booking:', formData);
-                const response = await fetch('http://localhost:5000/book-consultation', {
+                // Special handling for email field
+                if (field.id === 'patient_email') {
+                    const emailResponse = await fetch('http://localhost:5000/validate-email', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email: field.value })
+                    });
+
+                    const emailData = await emailResponse.json();
+                    
+                    // Clear previous validation state
+                    field.classList.remove('is-valid', 'is-invalid');
+                    const errorDiv = document.getElementById('patient_email_error');
+                    errorDiv.style.display = 'none';
+
+                    if (!emailData.valid) {
+                        field.classList.add('is-invalid');
+                        errorDiv.textContent = emailData.details?.message || 'Please enter a valid and active email address';
+                        errorDiv.style.display = 'block';
+                        return;
+                    }
+                }
+
+                // Special handling for phone field
+                if (field.id === 'patient_phone') {
+                    const phoneResponse = await fetch('http://localhost:5000/validate-phone', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ phone: field.value })
+                    });
+
+                    const phoneData = await phoneResponse.json();
+                    
+                    // Clear previous validation state
+                    field.classList.remove('is-valid', 'is-invalid');
+                    const errorDiv = document.getElementById('patient_phone_error');
+                    errorDiv.style.display = 'none';
+
+                    if (!phoneData.valid) {
+                        field.classList.add('is-invalid');
+                        errorDiv.textContent = phoneData.details?.message || 'Please enter a valid phone number';
+                        errorDiv.style.display = 'block';
+                        return;
+                    } else {
+                        // If valid, update the field with the formatted number
+                        field.value = phoneData.details.formatted_number;
+                        // Add tooltip with carrier and country info if available
+                        const info = [];
+                        if (phoneData.details.carrier) info.push(`Carrier: ${phoneData.details.carrier}`);
+                        if (phoneData.details.country) info.push(`Country: ${phoneData.details.country}`);
+                        if (info.length > 0) {
+                            field.title = info.join('\n');
+                        }
+                    }
+                }
+
+                // Continue with regular validation for all fields
+                const response = await fetch('http://localhost:5000/validate-consultation-fields', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': token
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(formData)
                 });
 
-                console.log('Booking response status:', response.status);
                 const data = await response.json();
-                console.log('Booking response data:', data);
                 
-                if (response.ok) {
-                    alert('Consultation booked successfully! Please proceed to payment.');
-                    window.location.href = 'payment.html?consultation_id=' + data.consultation_id;
-                } else {
-                    if (response.status === 409) {
-                        alert('This time slot is no longer available. Please select another slot.');
-                        // Refresh available slots
-                        document.getElementById('consultation_date').dispatchEvent(new Event('change'));
-                    } else {
-                        alert('Failed to book consultation: ' + data.message);
+                // Clear all previous validation states for the field
+                field.classList.remove('is-valid', 'is-invalid');
+                const errorDiv = document.getElementById(`${field.id}_error`);
+                errorDiv.style.display = 'none';
+                
+                if (!response.ok) {
+                    // Show field-specific error if it exists
+                    const fieldError = data.errors[field.id.replace('patient_', '')];
+                    if (fieldError) {
+                        field.classList.add('is-invalid');
+                        errorDiv.textContent = fieldError;
+                        errorDiv.style.display = 'block';
                     }
+                } else {
+                    field.classList.add('is-valid');
                 }
             } catch (error) {
-                console.error('Error booking consultation:', error);
+                console.error('Validation error:', error);
+            }
+        }
+
+        // Add validation listeners to form fields with longer debounce for email and phone
+        const fields = ['patient_name', 'patient_email', 'patient_phone', 'patient_age', 'patient_gender'];
+        fields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            // Use longer debounce time for email and phone to prevent too many API calls
+            const debounceTime = (fieldId === 'patient_email' || fieldId === 'patient_phone') ? 1000 : 500;
+            field.addEventListener('input', debounce(() => validateField(field), debounceTime));
+            field.addEventListener('blur', () => validateField(field));
+        });
+
+        // Update form submission to validate all fields first
+        document.getElementById('consultationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Validate all fields
+            const formData = {
+                patient_name: document.getElementById('patient_name').value,
+                patient_email: document.getElementById('patient_email').value,
+                patient_phone: document.getElementById('patient_phone').value,
+                patient_age: document.getElementById('patient_age').value,
+                patient_gender: document.getElementById('patient_gender').value
+            };
+
+            try {
+                const validationResponse = await fetch('http://localhost:5000/validate-consultation-fields', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const validationData = await validationResponse.json();
+                
+                if (!validationResponse.ok) {
+                    // Show validation errors
+                    Object.keys(validationData.errors).forEach(field => {
+                        const element = document.getElementById(`patient_${field}`);
+                        if (element) {
+                            element.classList.add('is-invalid');
+                            const errorDiv = document.getElementById(`patient_${field}_error`);
+                            errorDiv.textContent = validationData.errors[field];
+                            errorDiv.style.display = 'block';
+                        }
+                    });
+                    return;
+                }
+
+                // If validation passes, proceed with booking
+                if (!selectedTimeSlot) {
+                    alert('Please select a time slot');
+                    return;
+                }
+
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('Please log in to book a consultation');
+                    return;
+                }
+
+                // Continue with the existing booking logic...
+                const bookingData = {
+                    expert_id: expertId,
+                    consultation_date: document.getElementById('consultation_date').value,
+                    consultation_time: selectedTimeSlot.start,
+                    consultation_type: 'video',
+                    ...formData
+                };
+
+                const bookingResponse = await fetch('http://localhost:5000/book-consultation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const bookingResult = await bookingResponse.json();
+                
+                if (!bookingResponse.ok) {
+                    throw new Error(bookingResult.message || `Failed to book consultation: ${bookingResponse.status}`);
+                }
+
+                alert('Consultation booked successfully! Please proceed to payment.');
+                window.location.href = 'payment.html?consultation_id=' + bookingResult.consultation_id;
+            } catch (error) {
+                console.error('Error:', error);
                 alert('Failed to book consultation. Please try again.');
             }
         });
-
-        // Set minimum date to today
-        const dateInput = document.getElementById('consultation_date');
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.min = today;
     </script>
 </body>
 </html> 

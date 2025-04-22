@@ -22,6 +22,7 @@
                         <div class="form-group">
                             <label for="email">Email</label>
                             <input type="email" id="email" name="email" required>
+                            <div class="error-feedback" id="email_error"></div>
                         </div>
                         <div class="form-group">
                             <label for="password">Password</label>
@@ -40,10 +41,72 @@
     </div>
     <script src="cursor.js"></script>
     <script>
+        // Debounce function to limit API calls
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Function to validate email
+        async function validateEmail(email) {
+            try {
+                const response = await fetch('http://localhost:5000/validate-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                const emailInput = document.getElementById('email');
+                const errorDiv = document.getElementById('email_error');
+
+                // Clear previous validation state
+                emailInput.classList.remove('is-valid', 'is-invalid');
+                errorDiv.style.display = 'none';
+
+                if (!data.valid) {
+                    emailInput.classList.add('is-invalid');
+                    errorDiv.textContent = data.details?.message || 'Please enter a valid and active email address';
+                    errorDiv.style.display = 'block';
+                    return false;
+                } else {
+                    emailInput.classList.add('is-valid');
+                    return true;
+                }
+            } catch (error) {
+                console.error('Email validation error:', error);
+                return false;
+            }
+        }
+
+        // Add email validation on input and blur
+        const emailInput = document.getElementById('email');
+        emailInput.addEventListener('input', debounce(async () => {
+            await validateEmail(emailInput.value);
+        }, 1000));
+        emailInput.addEventListener('blur', async () => {
+            await validateEmail(emailInput.value);
+        });
+
         document.querySelector('.login-form form').addEventListener('submit', async function(event) {
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+
+            // Validate email before submission
+            const isEmailValid = await validateEmail(email);
+            if (!isEmailValid) {
+                return;
+            }
 
             try {
                 const response = await fetch('http://localhost:5000/login', {
@@ -57,7 +120,6 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Store token in localStorage for future authenticated requests
                     localStorage.setItem('authToken', data.token);
                     localStorage.setItem('userId', data.user.id);
                     localStorage.setItem('username', data.user.username);
