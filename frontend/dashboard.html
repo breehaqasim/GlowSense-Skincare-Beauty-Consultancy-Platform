@@ -41,7 +41,6 @@
             <div class="profile-details">
                 <h2 id="profile-username">Loading...</h2>
                 <p>Email: <span id="profile-email">Loading...</span></p>
-                <p>Member since: <span id="profile-member-since">Loading...</span></p>
             </div>
         </section>
 
@@ -121,7 +120,6 @@
             const bookingContainer = document.getElementById('bookingHistory');
             const profileUsername = document.getElementById('profile-username');
             const profileEmail = document.getElementById('profile-email');
-            const profileMemberSince = document.getElementById('profile-member-since');
 
             try {
                 const response = await authenticatedFetch('http://localhost:5000/user/consultations');
@@ -135,8 +133,7 @@
                 // Populate Profile Section
                 profileUsername.textContent = userInfo.username;
                 profileEmail.textContent = userInfo.email;
-                profileMemberSince.textContent = userInfo.member_since;
-                 // Also update nav username again in case it wasn't ready before
+                // Also update nav username again in case it wasn't ready before
                 if (usernameDisplay) usernameDisplay.textContent = userInfo.username;
 
                 // Populate Skincare Submissions
@@ -182,17 +179,20 @@
                         // Add to bookings if scheduled
                         if (consult.status.toLowerCase() === 'scheduled' && consult.scheduled_time) {
                             const scheduledDate = new Date(consult.scheduled_time);
-                            const formattedScheduledDate = `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')}`;
-                            const formattedTime = scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const formattedScheduledDate = `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')} ${scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`;
                             
-                            // Get the selected expert's name
-                            const expertName = consult.selected_expert ? consult.selected_expert.name : 
-                                             (consult.expert ? consult.expert.name : 'Not assigned');
+                            // Get the doctor's name - prioritize selected_expert over expert
+                            let doctorName = 'Not assigned';
+                            if (consult.selected_expert && consult.selected_expert.name) {
+                                doctorName = consult.selected_expert.name;
+                            } else if (consult.expert && consult.expert.name) {
+                                doctorName = consult.expert.name;
+                            }
                             
                             bookingsHtml += `
                                 <div class="history-item">
-                                    <div class="history-item-field">${formattedScheduledDate} ${formattedTime}</div>
-                                    <div class="history-item-field">${expertName}</div>
+                                    <div class="history-item-field">${formattedScheduledDate}</div>
+                                    <div class="history-item-field">${doctorName}</div>
                                     <div class="history-item-field">${consult.consultation_type || 'Video'}</div>
                                     <div class="history-item-field">Scheduled</div>
                                 </div>
@@ -223,19 +223,6 @@
                 // Email should be in localStorage if stored during login
                 const email = localStorage.getItem('email');
                 profileEmail.textContent = email || 'Not available';
-                
-                // Member since date should be in localStorage if stored during login
-                const memberSince = localStorage.getItem('memberSince');
-                if (memberSince) {
-                    try {
-                        const joinDate = new Date(memberSince);
-                        profileMemberSince.textContent = `${joinDate.toLocaleString('default', { month: 'long' })} ${joinDate.getFullYear()}`;
-                    } catch (e) {
-                        profileMemberSince.textContent = 'Not available';
-                    }
-                } else {
-                    profileMemberSince.textContent = 'Not available';
-                }
             }
         });
     </script>

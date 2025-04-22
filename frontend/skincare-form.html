@@ -244,8 +244,8 @@
                     <p>${error.message || 'An error occurred. Please try again later.'}</p>
                 </div>`;
                 messageDiv.style.display = 'block';
-            } finally {
-                // Re-enable submit button
+                
+                // Re-enable submit button only on error
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit';
             }

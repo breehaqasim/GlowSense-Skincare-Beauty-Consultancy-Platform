@@ -598,8 +598,9 @@
                     throw new Error(bookingResult.message || `Failed to book consultation: ${bookingResponse.status}`);
                 }
 
-                alert('Consultation booked successfully! Please proceed to payment.');
-                window.location.href = 'payment.html?consultation_id=' + bookingResult.consultation_id;
+                // Show success message and close form
+                alert('Consultation booked successfully! You can view your booking in your dashboard.');
+                window.parent.postMessage('closeForm', '*');
             } catch (error) {
                 console.error('Error:', error);
                 alert('Failed to book consultation. Please try again.');

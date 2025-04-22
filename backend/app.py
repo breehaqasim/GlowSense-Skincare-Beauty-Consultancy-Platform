@@ -441,6 +441,9 @@ def check_slot_availability():
 def book_consultation(current_user):
     try:
         data = request.get_json()
+        print(f"\n=== Starting Consultation Booking ===")
+        print(f"Received data: {data}")
+        print(f"Expert ID: {data.get('expert_id')}")
         
         # Verify the slot is within expert's available time slots
         date_obj = datetime.strptime(data.get('consultation_date'), '%Y-%m-%d')
@@ -449,6 +452,7 @@ def book_consultation(current_user):
             day_of_week = 0
         
         time_obj = datetime.strptime(data.get('consultation_time'), '%H:%M').time()
+        print(f"Parsed date: {date_obj}, time: {time_obj}")
         
         # Check if the slot is in expert's schedule
         expert_slot = supabase.table('expert_time_slots')\
@@ -457,6 +461,8 @@ def book_consultation(current_user):
             .eq('day_of_week', day_of_week)\
             .eq('is_available', True)\
             .execute()
+            
+        print(f"Expert slot check result: {expert_slot.data}")
             
         if not expert_slot.data:
             return jsonify({
@@ -484,6 +490,8 @@ def book_consultation(current_user):
             .eq('time_slot', data.get('consultation_time'))\
             .execute()
             
+        print(f"Slot availability check result: {check_slot.data}")
+            
         if check_slot.data:
             return jsonify({
                 "message": "This time slot is no longer available. Please select another slot."
@@ -497,8 +505,12 @@ def book_consultation(current_user):
             'user_id': current_user.id
         }
         
+        print(f"Creating booked slot with data: {slot_data}")
+        
         # Insert into booked_slots table
         slot_result = supabase.table('booked_slots').insert(slot_data).execute()
+        
+        print(f"Booked slot creation result: {slot_result.data}")
         
         if not slot_result.data:
             return jsonify({"message": "Failed to book time slot"}), 500
@@ -510,6 +522,8 @@ def book_consultation(current_user):
             .order('created_at', desc=True)\
             .limit(1)\
             .execute()
+            
+        print(f"Latest consultation query result: {latest_consultation.data}")
             
         if not latest_consultation.data:
             return jsonify({"message": "No consultation found to update"}), 404
@@ -529,11 +543,16 @@ def book_consultation(current_user):
             'patient_gender': data.get('patient_gender')
         }
         
+        print(f"Updating consultation with data: {consultation_data}")
+        
         # Update the consultation
         result = supabase.table('consultations')\
             .update(consultation_data)\
             .eq('id', consultation_id)\
             .execute()
+        
+        print(f"Consultation update result: {result.data}")
+        print("=== Consultation Booking Complete ===\n")
         
         if not result.data:
             # If consultation update fails, delete the booked slot
@@ -679,6 +698,121 @@ def validate_phone():
         return jsonify({
             'valid': False,
             'error': str(e)
+        }), 500
+
+# Route for forgot password
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    try:
+        print("\n=== Starting Password Reset Process ===")
+        print("Request Headers:", dict(request.headers))
+        print("Request Method:", request.method)
+        
+        data = request.get_json()
+        print("Request Data:", data)
+        
+        email = data.get('email')
+        print(f"Processing reset for email: {email}")
+        
+        if not email:
+            print("Error: No email provided")
+            return jsonify({'message': 'Email is required'}), 400
+            
+        print(f"Validating and sending reset email to: {email}")
+            
+        try:
+            print("\nMaking Supabase API call...")
+            print("Supabase Configuration:")
+            print("- URL:", supabase.supabase_url)
+            print("- Using Auth Client:", bool(supabase.auth))
+            
+            # Use Supabase's reset password email functionality
+            result = supabase.auth.reset_password_email(
+                email,
+                {
+                    'redirect_to': 'http://127.0.0.1:5500/frontend/reset-password.html'
+                }
+            )
+            print("\nSupabase API Response:")
+            print("- Success:", bool(result))
+            print("- Result Data:", result)
+            
+            return jsonify({
+                'message': 'Password reset link has been sent to your email',
+                'debug_info': {
+                    'email_sent': True,
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+            }), 200
+            
+        except Exception as supabase_error:
+            print("\nSupabase Error Details:")
+            print("- Error Type:", type(supabase_error).__name__)
+            print("- Error Message:", str(supabase_error))
+            print("- Error Args:", getattr(supabase_error, 'args', []))
+            
+            error_str = str(supabase_error).lower()
+            
+            if "user not found" in error_str:
+                print("Error: User not found in database")
+                return jsonify({
+                    'message': 'No account found with this email address',
+                    'debug_info': {
+                        'error_type': 'USER_NOT_FOUND',
+                        'timestamp': datetime.utcnow().isoformat()
+                    }
+                }), 404
+            else:
+                print(f"Unexpected Supabase error: {error_str}")
+                raise supabase_error
+            
+    except Exception as e:
+        print("\nGlobal Error Details:")
+        print("- Error Type:", type(e).__name__)
+        print("- Error Message:", str(e))
+        print("- Error Args:", getattr(e, 'args', []))
+        print("- Stack Trace:", getattr(e, '__traceback__', None))
+        
+        return jsonify({
+            'message': 'An error occurred while processing your request. Please try again later.',
+            'debug_info': {
+                'error_type': type(e).__name__,
+                'error_message': str(e),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+        }), 500
+
+    finally:
+        print("\n=== Password Reset Process Complete ===")
+        print("Timestamp:", datetime.utcnow().isoformat())
+
+# Route for resetting password
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    try:
+        data = request.get_json()
+        token = data.get('token')
+        new_password = data.get('password')
+        
+        if not token or not new_password:
+            return jsonify({'message': 'Token and new password are required'}), 400
+            
+        # Use Supabase's password update functionality
+        result = supabase.auth.verify_and_update_user(
+            token,
+            {"password": new_password}
+        )
+        
+        print(f"Password reset result: {result}")  # Debug log
+        
+        return jsonify({
+            'message': 'Password has been reset successfully'
+        }), 200
+            
+    except Exception as e:
+        print(f"Error in reset password: {str(e)}")  # Debug log
+        return jsonify({
+            'message': 'An error occurred while resetting your password'
         }), 500
 
 if __name__ == "__main__":
