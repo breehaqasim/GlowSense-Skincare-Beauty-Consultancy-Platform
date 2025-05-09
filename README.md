@@ -34,10 +34,8 @@ A **full-stack platform** enabling users to:
 ### **Infrastructure**  
 | Component          | Technology       |  
 |--------------------|------------------|  
-| Hosting            | DigitalOcean VPS |  
-| Database           | MySQL/MongoDB    |  
-| Authentication     | Session-based    |  
-| Payment Processing | Google Pay/Apple Pay/Cards |  
+| Database           | Supabase         |  
+
 
 ---
 
@@ -45,21 +43,9 @@ A **full-stack platform** enabling users to:
 
 ### **User Features**  
 ✅ Profile creation with skin type analysis  
-✅ Expert matching algorithm  
-✅ Secure video consultations (WebRTC)  
+✅ Expert matching algorithm   
 ✅ Product recommendation engine *(skincare only)*  
 ✅ Trending makeup product listings  
-
-### **Expert Features**  
-✅ Verified profile system  
-✅ Consultation scheduling  
-✅ Video tutorial uploads  
-✅ Client messaging system  
-
-### **Admin Features**  
-✅ User/expert management dashboard  
-✅ Transaction monitoring  
-✅ Content moderation  
 
 ---
 
